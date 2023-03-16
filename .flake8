@@ -1,0 +1,2 @@
+[flake8]
+ignore = W,BLK,E203,E402,E501

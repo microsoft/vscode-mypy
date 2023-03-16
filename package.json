@@ -1,0 +1,173 @@
+{
+    "name": "mypy",
+    "displayName": "Mypy",
+    "description": "Linting support for python files using `mypy`.",
+    "version": "2023.1.0-dev",
+    "preview": true,
+    "serverInfo": {
+        "name": "Mypy",
+        "module": "mypy"
+    },
+    "publisher": "ms-python",
+    "license": "MIT",
+    "homepage": "https://github.com/<my-github>/<my-extension-project>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/<my-github>/<my-extension-project>.git"
+    },
+    "bugs": {
+        "url": "https://github.com/<my-github>/<my-extension-project>/issues"
+    },
+    "galleryBanner": {
+        "color": "#1e415e",
+        "theme": "dark"
+    },
+    "keywords": [
+        "python",
+        "mypy"
+    ],
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Linters",
+        "Formatters"
+    ],
+    "extensionDependencies": [
+        "ms-python.python"
+    ],
+    "activationEvents": [
+        "onLanguage:python",
+        "workspaceContains:mypy.ini"
+    ],
+    "main": "./dist/extension.js",
+    "scripts": {
+        "vscode:prepublish": "npm run package",
+        "compile": "webpack",
+        "watch": "webpack --watch",
+        "package": "webpack --mode production --devtool source-map --config ./webpack.config.js",
+        "compile-tests": "tsc -p . --outDir out",
+        "watch-tests": "tsc -p . -w --outDir out",
+        "pretest": "npm run compile-tests && npm run compile && npm run lint",
+        "lint": "eslint src --ext ts",
+        "format-check": "prettier --check 'src/**/*.ts' 'build/**/*.yml' '.github/**/*.yml'",
+        "test": "node ./out/test/runTest.js",
+        "vsce-package": "vsce package -o mypy.vsix"
+    },
+    "contributes": {
+        "configuration": {
+            "properties": {
+                "mypy.args": {
+                    "default": [
+                        "--follow-imports=silent",
+                        "--ignore-missing-imports",
+                        "--no-pretty"
+                    ],
+                    "description": "Arguments passed in. Each argument is a separate item in the array.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "scope": "resource",
+                    "type": "array"
+                },
+                "mypy.path": {
+                    "default": [],
+                    "description": "When set to a path to mypy binary, extension will use that. NOTE: Using this option may slowdown server response time.",
+                    "scope": "resource",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "mypy.importStrategy": {
+                    "default": "fromEnvironment",
+                    "description": "Defines where `mypy` is imported from. This setting may be ignored if `mypy.path` is set.",
+                    "enum": [
+                        "useBundled",
+                        "fromEnvironment"
+                    ],
+                    "enumDescriptions": [
+                        "Always use the bundled version of `mypy`.",
+                        "Use `mypy` from environment, fallback to bundled version only if `mypy` not available in the environment."
+                    ],
+                    "scope": "window",
+                    "type": "string"
+                },
+                "mypy.interpreter": {
+                    "default": [],
+                    "description": "When set to a path to python executable, extension will use that to launch the server and any subprocess.",
+                    "scope": "window",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "mypy.severity": {
+                    "default": {
+                        "error": "Error",
+                        "note": "Information"
+                    },
+                    "additionalProperties": {
+                        "type": "string",
+                        "enum": [
+                            "Error",
+                            "Hint",
+                            "Information",
+                            "Warning"
+                        ]
+                    },
+                    "description": "%settings.severity.description%",
+                    "scope": "resource",
+                    "type": "object"
+                },
+                "mypy.showNotifications": {
+                    "default": "off",
+                    "description": "Controls when notifications are shown by this extension.",
+                    "enum": [
+                        "off",
+                        "onError",
+                        "onWarning",
+                        "always"
+                    ],
+                    "enumDescriptions": [
+                        "All notifications are turned off, any errors or warning are still available in the logs.",
+                        "Notifications are shown only in the case of an error.",
+                        "Notifications are shown for errors and warnings.",
+                        "Notifications are show for anything that the server chooses to show."
+                    ],
+                    "scope": "machine",
+                    "type": "string"
+                }
+            }
+        },
+        "commands": [
+            {
+                "title": "Restart Server",
+                "category": "Mypy",
+                "command": "mypy.restart"
+            }
+        ]
+    },
+    "dependencies": {
+        "fs-extra": "^11.1.0",
+        "vscode-languageclient": "^8.1.0"
+    },
+    "devDependencies": {
+        "@types/fs-extra": "^11.0.1",
+        "@types/vscode": "1.75.0",
+        "@types/glob": "^8.1.0",
+        "@types/node": "14.x",
+        "@typescript-eslint/eslint-plugin": "^5.54.0",
+        "@typescript-eslint/parser": "^5.54.0",
+        "@vscode/test-electron": "^2.3.0",
+        "eslint": "^8.35.0",
+        "glob": "^9.1.0",
+        "prettier": "^2.8.4",
+        "typescript": "^4.9.5",
+        "ts-loader": "^9.4.2",
+        "webpack": "^5.75.0",
+        "webpack-cli": "^5.0.1",
+        "vsce": "^2.15.0"
+    }
+}
