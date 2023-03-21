@@ -1,7 +1,7 @@
 {
-    "name": "mypy",
-    "displayName": "Mypy",
-    "description": "Linting support for python files using `mypy`.",
+    "name": "mypy-type-checker",
+    "displayName": "Mypy Type Checker",
+    "description": "%extension.description%",
     "version": "2023.1.0-dev",
     "preview": true,
     "serverInfo": {
@@ -41,6 +41,7 @@
         "onLanguage:python",
         "workspaceContains:mypy.ini"
     ],
+    "icon": "icon.png",
     "main": "./dist/extension.js",
     "scripts": {
         "vscode:prepublish": "npm run package",
@@ -58,52 +59,52 @@
     "contributes": {
         "configuration": {
             "properties": {
-                "mypy.args": {
+                "mypy-type-checker.args": {
                     "default": [
                         "--follow-imports=silent",
                         "--ignore-missing-imports",
                         "--no-pretty"
                     ],
-                    "description": "Arguments passed in. Each argument is a separate item in the array.",
+                    "description": "%settings.args.description%",
                     "items": {
                         "type": "string"
                     },
                     "scope": "resource",
                     "type": "array"
                 },
-                "mypy.path": {
+                "mypy-type-checker.path": {
                     "default": [],
-                    "description": "When set to a path to mypy binary, extension will use that. NOTE: Using this option may slowdown server response time.",
+                    "description": "%settings.path.description%",
                     "scope": "resource",
                     "items": {
                         "type": "string"
                     },
                     "type": "array"
                 },
-                "mypy.importStrategy": {
+                "mypy-type-checker.importStrategy": {
                     "default": "fromEnvironment",
-                    "description": "Defines where `mypy` is imported from. This setting may be ignored if `mypy.path` is set.",
+                    "description": "%settings.importStrategy.description%",
                     "enum": [
                         "useBundled",
                         "fromEnvironment"
                     ],
                     "enumDescriptions": [
-                        "Always use the bundled version of `mypy`.",
-                        "Use `mypy` from environment, fallback to bundled version only if `mypy` not available in the environment."
+                        "%settings.importStrategy.useBundled.description%",
+                        "%settings.importStrategy.fromEnvironment.description%"
                     ],
                     "scope": "window",
                     "type": "string"
                 },
-                "mypy.interpreter": {
+                "mypy-type-checker.interpreter": {
                     "default": [],
-                    "description": "When set to a path to python executable, extension will use that to launch the server and any subprocess.",
+                    "description": "%settings.interpreter.description%",
                     "scope": "window",
                     "items": {
                         "type": "string"
                     },
                     "type": "array"
                 },
-                "mypy.severity": {
+                "mypy-type-checker.severity": {
                     "default": {
                         "error": "Error",
                         "note": "Information"
@@ -121,9 +122,9 @@
                     "scope": "resource",
                     "type": "object"
                 },
-                "mypy.showNotifications": {
+                "mypy-type-checker.showNotifications": {
                     "default": "off",
-                    "description": "Controls when notifications are shown by this extension.",
+                    "description": "%settings.showNotifications.description%",
                     "enum": [
                         "off",
                         "onError",
@@ -131,10 +132,10 @@
                         "always"
                     ],
                     "enumDescriptions": [
-                        "All notifications are turned off, any errors or warning are still available in the logs.",
-                        "Notifications are shown only in the case of an error.",
-                        "Notifications are shown for errors and warnings.",
-                        "Notifications are show for anything that the server chooses to show."
+                        "%settings.showNotifications.off.description%",
+                        "%settings.showNotifications.onError.description%",
+                        "%settings.showNotifications.onWarning.description%",
+                        "%settings.showNotifications.always.description%"
                     ],
                     "scope": "machine",
                     "type": "string"
@@ -143,9 +144,9 @@
         },
         "commands": [
             {
-                "title": "Restart Server",
+                "title": "%command.restartServer%",
                 "category": "Mypy",
-                "command": "mypy.restart"
+                "command": "mypy-type-checker.restart"
             }
         ]
     },

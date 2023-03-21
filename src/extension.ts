@@ -21,8 +21,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // This is required to get server name and module. This should be
     // the first thing that we do in this extension.
     const serverInfo = loadServerDefaults();
-    const serverName = serverInfo.name;
-    const serverId = serverInfo.module;
+    const serverName = `${serverInfo.name} Type Checker`;
+    const serverId = `${serverInfo.module}-type-checker`;
 
     // Setup logging
     const outputChannel = createOutputChannel(serverName);
