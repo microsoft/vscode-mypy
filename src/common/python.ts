@@ -3,7 +3,7 @@
 
 /* eslint-disable @typescript-eslint/naming-convention */
 import { commands, Disposable, Event, EventEmitter, extensions, Uri, WorkspaceFolder } from 'vscode';
-import { traceError, traceLog } from './log/logging';
+import { traceError, traceLog } from './logging';
 
 type Environment = EnvironmentPath & {
     /**

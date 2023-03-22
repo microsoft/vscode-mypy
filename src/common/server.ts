@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { Disposable, LogOutputChannel, WorkspaceFolder } from 'vscode';
+import { Disposable, LanguageStatusSeverity, LogOutputChannel, WorkspaceFolder, l10n } from 'vscode';
 import { State } from 'vscode-languageclient';
 import {
     LanguageClient,
@@ -10,11 +10,12 @@ import {
     ServerOptions,
 } from 'vscode-languageclient/node';
 import { DEBUG_SERVER_SCRIPT_PATH, SERVER_SCRIPT_PATH } from './constants';
-import { traceError, traceInfo, traceVerbose } from './log/logging';
+import { traceError, traceInfo, traceVerbose } from './logging';
 import { getDebuggerPath } from './python';
 import { getExtensionSettings, getGlobalSettings, getWorkspaceSettings, ISettings } from './settings';
 import { getLSClientTraceLevel, getProjectRoot } from './utilities';
-import { isVirtualWorkspace } from './vscodeapi';
+import { getDocumentSelector, isVirtualWorkspace } from './vscodeapi';
+import { updateStatus } from './status';
 
 export type IInitOptions = { settings: ISettings[]; globalSettings: ISettings };
 
@@ -58,14 +59,7 @@ async function createServer(
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
         // Register the server for python documents
-        documentSelector: isVirtualWorkspace()
-            ? [{ language: 'python' }]
-            : [
-                  { scheme: 'file', language: 'python' },
-                  { scheme: 'untitled', language: 'python' },
-                  { scheme: 'vscode-notebook', language: 'python' },
-                  { scheme: 'vscode-notebook-cell', language: 'python' },
-              ],
+        documentSelector: getDocumentSelector(),
         outputChannel: outputChannel,
         traceOutputChannel: outputChannel,
         revealOutputChannelOn: RevealOutputChannelOn.Never,
@@ -84,7 +78,11 @@ export async function restartServer(
 ): Promise<LanguageClient | undefined> {
     if (lsClient) {
         traceInfo(`Server: Stop requested`);
-        await lsClient.stop();
+        try {
+            await lsClient.stop();
+        } catch (ex) {
+            traceError(`Server: Stop failed: ${ex}`);
+        }
         _disposables.forEach((d) => d.dispose());
         _disposables = [];
     }
@@ -96,6 +94,7 @@ export async function restartServer(
                 '[Option 1] Select python interpreter using the ms-python.python.\r\n' +
                 `[Option 2] Set an interpreter using "${serverId}.interpreter" setting.\r\n`,
         );
+        updateStatus(l10n.t('No interpreter'), LanguageStatusSeverity.Error);
         return undefined;
     }
 
@@ -126,8 +125,10 @@ export async function restartServer(
         await newLSClient.start();
     } catch (ex) {
         traceError(`Server: Start failed: ${ex}`);
+        updateStatus(l10n.t('Server failed to start'), LanguageStatusSeverity.Error);
         return undefined;
     }
     newLSClient.setTrace(getLSClientTraceLevel(outputChannel.logLevel));
+    updateStatus('', LanguageStatusSeverity.Information);
     return newLSClient;
 }

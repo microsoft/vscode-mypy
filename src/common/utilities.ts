@@ -3,8 +3,8 @@
 
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { env, LogLevel, Uri, WorkspaceFolder } from 'vscode';
-import { Trace, TraceValues } from 'vscode-jsonrpc/node';
+import { DocumentSelector, LogLevel, Uri, WorkspaceFolder } from 'vscode';
+import { Trace } from 'vscode-jsonrpc/node';
 import { getWorkspaceFolders } from './vscodeapi';
 
 export function getLSClientTraceLevel(logLevel: LogLevel): Trace {

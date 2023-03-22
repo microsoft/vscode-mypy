@@ -7,6 +7,8 @@ import {
     commands,
     ConfigurationScope,
     Disposable,
+    languages,
+    LanguageStatusItem,
     LogOutputChannel,
     Uri,
     window,
@@ -14,6 +16,7 @@ import {
     WorkspaceConfiguration,
     WorkspaceFolder,
 } from 'vscode';
+import { DocumentSelector } from 'vscode-languageclient';
 
 export function createOutputChannel(name: string): LogOutputChannel {
     return window.createOutputChannel(name, { log: true });
@@ -40,4 +43,19 @@ export function getWorkspaceFolders(): readonly WorkspaceFolder[] {
 
 export function getWorkspaceFolder(uri: Uri): WorkspaceFolder | undefined {
     return workspace.getWorkspaceFolder(uri);
+}
+
+export function createLanguageStatusItem(id: string, selector: DocumentSelector): LanguageStatusItem {
+    return languages.createLanguageStatusItem(id, selector);
+}
+
+export function getDocumentSelector(): DocumentSelector {
+    return isVirtualWorkspace()
+        ? [{ language: 'python' }]
+        : [
+              { scheme: 'file', language: 'python' },
+              { scheme: 'untitled', language: 'python' },
+              { scheme: 'vscode-notebook', language: 'python' },
+              { scheme: 'vscode-notebook-cell', language: 'python' },
+          ];
 }

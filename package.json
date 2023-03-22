@@ -10,13 +10,14 @@
     },
     "publisher": "ms-python",
     "license": "MIT",
-    "homepage": "https://github.com/<my-github>/<my-extension-project>",
+    "icon": "icon.png",
+    "homepage": "https://github.com/microsoft/vscode-mypy",
     "repository": {
         "type": "git",
-        "url": "https://github.com/<my-github>/<my-extension-project>.git"
+        "url": "https://github.com/microsoft/vscode-mypy.git"
     },
     "bugs": {
-        "url": "https://github.com/<my-github>/<my-extension-project>/issues"
+        "url": "https://github.com/microsoft/vscode-mypy/issues"
     },
     "galleryBanner": {
         "color": "#1e415e",
@@ -41,7 +42,7 @@
         "onLanguage:python",
         "workspaceContains:mypy.ini"
     ],
-    "icon": "icon.png",
+
     "main": "./dist/extension.js",
     "scripts": {
         "vscode:prepublish": "npm run package",
@@ -65,7 +66,7 @@
                         "--ignore-missing-imports",
                         "--no-pretty"
                     ],
-                    "description": "%settings.args.description%",
+                    "markdownDescription": "%settings.args.description%",
                     "items": {
                         "type": "string"
                     },
@@ -74,7 +75,7 @@
                 },
                 "mypy-type-checker.path": {
                     "default": [],
-                    "description": "%settings.path.description%",
+                    "markdownDescription": "%settings.path.description%",
                     "scope": "resource",
                     "items": {
                         "type": "string"
@@ -82,13 +83,13 @@
                     "type": "array"
                 },
                 "mypy-type-checker.importStrategy": {
-                    "default": "fromEnvironment",
-                    "description": "%settings.importStrategy.description%",
+                    "default": "useBundled",
+                    "markdownDescription": "%settings.importStrategy.description%",
                     "enum": [
                         "useBundled",
                         "fromEnvironment"
                     ],
-                    "enumDescriptions": [
+                    "markdownEnumDescriptions": [
                         "%settings.importStrategy.useBundled.description%",
                         "%settings.importStrategy.fromEnvironment.description%"
                     ],
@@ -97,7 +98,7 @@
                 },
                 "mypy-type-checker.interpreter": {
                     "default": [],
-                    "description": "%settings.interpreter.description%",
+                    "markdownDescription": "%settings.interpreter.description%",
                     "scope": "window",
                     "items": {
                         "type": "string"
@@ -118,20 +119,20 @@
                             "Warning"
                         ]
                     },
-                    "description": "%settings.severity.description%",
+                    "markdownDescription": "%settings.severity.description%",
                     "scope": "resource",
                     "type": "object"
                 },
                 "mypy-type-checker.showNotifications": {
                     "default": "off",
-                    "description": "%settings.showNotifications.description%",
+                    "markdownDescription": "%settings.showNotifications.description%",
                     "enum": [
                         "off",
                         "onError",
                         "onWarning",
                         "always"
                     ],
-                    "enumDescriptions": [
+                    "markdownEnumDescriptions": [
                         "%settings.showNotifications.off.description%",
                         "%settings.showNotifications.onError.description%",
                         "%settings.showNotifications.onWarning.description%",

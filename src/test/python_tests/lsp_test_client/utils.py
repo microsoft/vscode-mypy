@@ -58,7 +58,7 @@ def get_initialization_options():
     package_json = json.loads(package_json_path.read_text())
 
     server_info = package_json["serverInfo"]
-    server_id = server_info["module"]
+    server_id = f"{server_info['module']}-type-checker"
 
     properties = package_json["contributes"]["configuration"]["properties"]
     setting = {}
