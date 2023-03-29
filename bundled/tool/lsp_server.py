@@ -100,7 +100,7 @@ def _linting_helper(document: workspace.Document) -> list[lsp.Diagnostic]:
         code_workspace = _get_settings_by_document(document)["workspaceFS"]
         if VERSION_TABLE.get(code_workspace, None):
             major, minor, _ = VERSION_TABLE[code_workspace]
-            if major > 0 or (major == 0 and minor >= 991):
+            if (major, minor) >= (0, 991):
                 extra_args += ["--show-error-end"]
 
         result = _run_tool_on_document(document, use_stdin=False, extra_args=extra_args)
