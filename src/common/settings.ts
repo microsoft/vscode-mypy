@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { ConfigurationChangeEvent, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
-import { traceLog } from './log/logging';
+import { traceLog } from './logging';
 import { getInterpreterDetails } from './python';
 import { getConfiguration, getWorkspaceFolders } from './vscodeapi';
 

@@ -3,7 +3,7 @@
 
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
-import { registerLogger, traceLog, traceVerbose } from './common/log/logging';
+import { registerLogger, traceLog, traceVerbose } from './common/logging';
 import {
     getInterpreterDetails,
     initializePython,
@@ -15,14 +15,15 @@ import { checkIfConfigurationChanged, getInterpreterFromSetting } from './common
 import { loadServerDefaults } from './common/setup';
 import { getProjectRoot } from './common/utilities';
 import { createOutputChannel, onDidChangeConfiguration, registerCommand } from './common/vscodeapi';
+import { registerLanguageStatusItem } from './common/status';
 
 let lsClient: LanguageClient | undefined;
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     // This is required to get server name and module. This should be
     // the first thing that we do in this extension.
     const serverInfo = loadServerDefaults();
-    const serverName = serverInfo.name;
-    const serverId = serverInfo.module;
+    const serverName = `${serverInfo.name} Type Checker`;
+    const serverId = `${serverInfo.module}-type-checker`;
 
     // Setup logging
     const outputChannel = createOutputChannel(serverName);
@@ -40,9 +41,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         onDidChangePythonInterpreter(async () => {
             await runServer();
         }),
-    );
-
-    context.subscriptions.push(
+        registerCommand(`${serverId}.showLogs`, async () => {
+            outputChannel.show();
+        }),
         registerCommand(`${serverId}.restart`, async () => {
             const interpreter = getInterpreterFromSetting(serverId);
             const interpreterDetails = await getInterpreterDetails();
@@ -53,14 +54,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 runPythonExtensionCommand('python.triggerEnvSelection', projectRoot.uri);
             }
         }),
-    );
-
-    context.subscriptions.push(
         onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
             if (checkIfConfigurationChanged(e, serverId)) {
                 await runServer();
             }
         }),
+        registerLanguageStatusItem(serverId, serverName, `${serverId}.showLogs`),
     );
 
     setImmediate(async () => {
