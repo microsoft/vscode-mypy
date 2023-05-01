@@ -7,7 +7,6 @@ For more information on `mypy`, see https://www.mypy-lang.org/.
 Note:
 
 -   This extension is supported for all [actively supported versions](https://devguide.python.org/#status-of-python-branches) of the `python` language (i.e., python >= 3.7).
--   The bundled `mypy` is only used if there is no installed version of `mypy` found in the selected `python` environment.
 -   Minimum supported version of `mypy` is `1.0.0`.
 
 ## Usage
