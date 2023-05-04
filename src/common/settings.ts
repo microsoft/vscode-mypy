@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { ConfigurationChangeEvent, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
+import { ConfigurationChangeEvent, ConfigurationScope, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
 import { traceLog } from './logging';
 import { getInterpreterDetails } from './python';
 import { getConfiguration, getWorkspaceFolders } from './vscodeapi';
@@ -22,20 +22,31 @@ export interface ISettings {
     showNotifications: string;
     extraPaths: string[];
 }
-export async function getExtensionSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings[]> {
-    const settings: ISettings[] = [];
-    const workspaces = getWorkspaceFolders();
 
-    for (const workspace of workspaces) {
-        const workspaceSetting = await getWorkspaceSettings(namespace, workspace, includeInterpreter);
-        settings.push(workspaceSetting);
-    }
-
-    return settings;
+export function getExtensionSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings[]> {
+    return Promise.all(getWorkspaceFolders().map((w) => getWorkspaceSettings(namespace, w, includeInterpreter)));
 }
 
-function resolveWorkspace(workspace: WorkspaceFolder, value: string): string {
-    return value.replace('${workspaceFolder}', workspace.uri.fsPath);
+function resolveVariables(value: string[], workspace?: WorkspaceFolder): string[] {
+    const substitutions = new Map<string, string>();
+    const home = process.env.HOME || process.env.USERPROFILE;
+    if (home) {
+        substitutions.set('${userHome}', home);
+    }
+    if (workspace) {
+        substitutions.set('${workspaceFolder}', workspace.uri.fsPath);
+    }
+    substitutions.set('${cwd}', process.cwd());
+    getWorkspaceFolders().forEach((w) => {
+        substitutions.set('${workspaceFolder:' + w.name + '}', w.uri.fsPath);
+    });
+
+    return value.map((s) => {
+        for (const [key, value] of substitutions) {
+            s = s.replace(key, value);
+        }
+        return s;
+    });
 }
 
 function getArgs(namespace: string, workspace: WorkspaceFolder): string[] {
@@ -79,7 +90,7 @@ function getCwd(namespace: string, workspace: WorkspaceFolder): string {
 
     if (legacyCwd) {
         traceLog('Using cwd from `python.linting.cwd`.');
-        return resolveWorkspace(workspace, legacyCwd);
+        return resolveVariables([legacyCwd], workspace)[0];
     }
 
     return workspace.uri.fsPath;
@@ -95,8 +106,8 @@ function getExtraPaths(namespace: string, workspace: WorkspaceFolder): string[] 
     return legacyExtraPaths;
 }
 
-export function getInterpreterFromSetting(namespace: string) {
-    const config = getConfiguration(namespace);
+export function getInterpreterFromSetting(namespace: string, scope?: ConfigurationScope) {
+    const config = getConfiguration(namespace, scope);
     return config.get<string[]>('interpreter');
 }
 
@@ -107,27 +118,27 @@ export async function getWorkspaceSettings(
 ): Promise<ISettings> {
     const config = getConfiguration(namespace, workspace.uri);
 
-    let interpreter: string[] | undefined = [];
+    let interpreter: string[] = [];
     if (includeInterpreter) {
-        interpreter = getInterpreterFromSetting(namespace);
-        if (interpreter === undefined || interpreter.length === 0) {
-            interpreter = (await getInterpreterDetails(workspace.uri)).path;
+        interpreter = getInterpreterFromSetting(namespace, workspace) ?? [];
+        if (interpreter.length === 0) {
+            interpreter = (await getInterpreterDetails(workspace.uri)).path ?? [];
         }
     }
 
-    const args = getArgs(namespace, workspace).map((s) => resolveWorkspace(workspace, s));
-    const path = getPath(namespace, workspace).map((s) => resolveWorkspace(workspace, s));
+    const args = getArgs(namespace, workspace);
+    const mypyPath = getPath(namespace, workspace);
     const extraPaths = getExtraPaths(namespace, workspace);
     const workspaceSetting = {
         cwd: getCwd(namespace, workspace),
         workspace: workspace.uri.toString(),
-        args,
+        args: resolveVariables(args, workspace),
         severity: config.get<Record<string, string>>('severity', DEFAULT_SEVERITY),
-        path,
-        interpreter: (interpreter ?? []).map((s) => resolveWorkspace(workspace, s)),
+        path: resolveVariables(mypyPath, workspace),
+        interpreter: resolveVariables(interpreter, workspace),
         importStrategy: config.get<string>('importStrategy', 'fromEnvironment'),
         showNotifications: config.get<string>('showNotifications', 'off'),
-        extraPaths: extraPaths.map((s) => resolveWorkspace(workspace, s)),
+        extraPaths: resolveVariables(extraPaths, workspace),
     };
     return workspaceSetting;
 }
