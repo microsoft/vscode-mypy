@@ -1,6 +1,6 @@
 # Mypy extension for Visual Studio Code
 
-A Visual Studio Code extension with support for the `mypy` linter. The extension ships with `mypy=1.1.1`.
+A Visual Studio Code extension with support for the `mypy` linter. The extension ships with `mypy=1.2.0`.
 
 For more information on `mypy`, see https://www.mypy-lang.org/.
 

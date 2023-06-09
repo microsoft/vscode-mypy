@@ -42,7 +42,6 @@
         "onLanguage:python",
         "workspaceContains:mypy.ini"
     ],
-
     "main": "./dist/extension.js",
     "scripts": {
         "vscode:prepublish": "npm run package",
@@ -99,7 +98,7 @@
                 "mypy-type-checker.interpreter": {
                     "default": [],
                     "markdownDescription": "%settings.interpreter.description%",
-                    "scope": "window",
+                    "scope": "resource",
                     "items": {
                         "type": "string"
                     },
@@ -152,7 +151,7 @@
         ]
     },
     "dependencies": {
-        "fs-extra": "^11.1.0",
+        "fs-extra": "^11.1.1",
         "vscode-languageclient": "^8.1.0"
     },
     "devDependencies": {
@@ -160,16 +159,16 @@
         "@types/glob": "^8.1.0",
         "@types/node": "14.x",
         "@types/vscode": "1.75.0",
-        "@typescript-eslint/eslint-plugin": "^5.55.0",
-        "@typescript-eslint/parser": "^5.55.0",
+        "@typescript-eslint/eslint-plugin": "^5.59.2",
+        "@typescript-eslint/parser": "^5.59.2",
         "@vscode/test-electron": "^2.3.0",
-        "@vscode/vsce": "^2.18.0",
-        "eslint": "^8.36.0",
-        "glob": "^9.3.0",
-        "prettier": "^2.8.4",
+        "@vscode/vsce": "^2.19.0",
+        "eslint": "^8.39.0",
+        "glob": "^10.2.2",
+        "prettier": "^2.8.8",
         "ts-loader": "^9.4.2",
-        "typescript": "^5.0.2",
-        "webpack": "^5.76.2",
-        "webpack-cli": "^5.0.1"
+        "typescript": "^5.0.4",
+        "webpack": "^5.82.0",
+        "webpack-cli": "^5.0.2"
     }
 }
