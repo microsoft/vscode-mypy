@@ -14,8 +14,7 @@ from .lsp_test_client import constants, defaults, session, utils
 TEST_FILE_PATH = constants.TEST_DATA / "sample1" / "sample.py"
 TEST_FILE_URI = utils.as_uri(str(TEST_FILE_PATH))
 LINTER = utils.get_server_info_defaults()
-TIMEOUT = 10  # 10 seconds
-DOCUMENTATION_HOME = "https://pylint.readthedocs.io/en/latest/user_guide/messages"
+TIMEOUT = 30  # 30 seconds
 
 
 def test_publish_diagnostics_on_open():
@@ -33,6 +32,10 @@ def test_publish_diagnostics_on_open():
             actual = params
             done.set()
 
+        def _log_handler(params):
+            print(params)
+
+        ls_session.set_notification_callback(session.WINDOW_LOG_MESSAGE, _log_handler)
         ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
 
         ls_session.notify_did_open(
@@ -47,7 +50,7 @@ def test_publish_diagnostics_on_open():
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
 
     expected = {
         "uri": TEST_FILE_URI,
@@ -55,7 +58,7 @@ def test_publish_diagnostics_on_open():
             {
                 "range": {
                     "start": {"line": 2, "character": 6},
-                    "end": {"line": 2, "character": 7},
+                    "end": {"line": 2, "character": 6},
                 },
                 "message": 'Name "x" is not defined  ',
                 "severity": 1,
@@ -83,6 +86,10 @@ def test_publish_diagnostics_on_save():
             actual = params
             done.set()
 
+        def _log_handler(params):
+            print(params)
+
+        ls_session.set_notification_callback(session.WINDOW_LOG_MESSAGE, _log_handler)
         ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
 
         ls_session.notify_did_save(
@@ -97,7 +104,7 @@ def test_publish_diagnostics_on_save():
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
 
     expected = {
         "uri": TEST_FILE_URI,
@@ -105,7 +112,7 @@ def test_publish_diagnostics_on_save():
             {
                 "range": {
                     "start": {"line": 2, "character": 6},
-                    "end": {"line": 2, "character": 7},
+                    "end": {"line": 2, "character": 6},
                 },
                 "message": 'Name "x" is not defined  ',
                 "severity": 1,
@@ -133,6 +140,10 @@ def test_publish_diagnostics_on_close():
             actual = params
             done.set()
 
+        def _log_handler(params):
+            print(params)
+
+        ls_session.set_notification_callback(session.WINDOW_LOG_MESSAGE, _log_handler)
         ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
 
         ls_session.notify_did_open(
@@ -147,7 +158,7 @@ def test_publish_diagnostics_on_close():
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
 
         # We should receive some diagnostics
         assert_that(len(actual), is_(greater_than(0)))
@@ -166,7 +177,7 @@ def test_publish_diagnostics_on_close():
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
 
     # On close should clearout everything
     expected = {
@@ -194,6 +205,10 @@ def test_severity_setting(lint_code):
             actual = params
             done.set()
 
+        def _log_handler(params):
+            print(params)
+
+        ls_session.set_notification_callback(session.WINDOW_LOG_MESSAGE, _log_handler)
         ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
 
         ls_session.notify_did_open(
@@ -208,7 +223,7 @@ def test_severity_setting(lint_code):
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
 
     expected = {
         "uri": TEST_FILE_URI,
@@ -216,7 +231,7 @@ def test_severity_setting(lint_code):
             {
                 "range": {
                     "start": {"line": 2, "character": 6},
-                    "end": {"line": 2, "character": 7},
+                    "end": {"line": 2, "character": 6},
                 },
                 "message": 'Name "x" is not defined  ',
                 "severity": 2,

@@ -61,9 +61,7 @@
             "properties": {
                 "mypy-type-checker.args": {
                     "default": [
-                        "--follow-imports=silent",
-                        "--ignore-missing-imports",
-                        "--no-pretty"
+                        "--follow-imports=skip"
                     ],
                     "markdownDescription": "%settings.args.description%",
                     "items": {

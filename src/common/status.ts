@@ -20,9 +20,14 @@ export function registerLanguageStatusItem(id: string, name: string, command: st
     };
 }
 
-export function updateStatus(status: string, severity: LanguageStatusSeverity, busy?: boolean, detail?: string): void {
+export function updateStatus(
+    status: string | undefined,
+    severity: LanguageStatusSeverity,
+    busy?: boolean,
+    detail?: string,
+): void {
     if (_status) {
-        _status.text = status.length === 0 ? `${_status.name}` : `${_status.name}: ${status}`;
+        _status.text = status && status.length > 0 ? `${_status.name}: ${status}` : `${_status.name}`;
         _status.severity = severity;
         _status.busy = busy ?? false;
         _status.detail = detail;

@@ -2,9 +2,9 @@
 // Licensed under the MIT License.
 
 import { ConfigurationChangeEvent, ConfigurationScope, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
-import { traceLog } from './logging';
 import { getInterpreterDetails } from './python';
 import { getConfiguration, getWorkspaceFolders } from './vscodeapi';
+import { traceLog } from './logging';
 
 const DEFAULT_SEVERITY: Record<string, string> = {
     error: 'Error',
@@ -60,7 +60,7 @@ function getArgs(namespace: string, workspace: WorkspaceFolder): string[] {
     const legacyConfig = getConfiguration('python', workspace.uri);
     const legacyArgs = legacyConfig.get<string[]>('linting.mypyArgs', []);
     if (legacyArgs.length > 0) {
-        traceLog('Using legacy Mypy args from `python.linting.mypyArgs`');
+        traceLog(`Using legacy Mypy args from 'python.linting.mypyArgs': ${legacyArgs.join(' ')}.`);
         return legacyArgs;
     }
 
@@ -78,7 +78,7 @@ function getPath(namespace: string, workspace: WorkspaceFolder): string[] {
     const legacyConfig = getConfiguration('python', workspace.uri);
     const legacyPath = legacyConfig.get<string>('linting.mypyPath', '');
     if (legacyPath.length > 0 && legacyPath !== 'mypy') {
-        traceLog('Using legacy Mypy path from `python.linting.mypyPath`');
+        traceLog(`Using legacy Mypy path from 'python.linting.mypyPath': ${legacyPath}`);
         return [legacyPath];
     }
     return [];
@@ -122,7 +122,21 @@ export async function getWorkspaceSettings(
     if (includeInterpreter) {
         interpreter = getInterpreterFromSetting(namespace, workspace) ?? [];
         if (interpreter.length === 0) {
+            traceLog(`No interpreter found from setting ${namespace}.interpreter`);
+            traceLog(`Getting interpreter from ms-python.python extension for workspace ${workspace.uri.fsPath}`);
             interpreter = (await getInterpreterDetails(workspace.uri)).path ?? [];
+            if (interpreter.length > 0) {
+                traceLog(
+                    `Interpreter from ms-python.python extension for ${workspace.uri.fsPath}:`,
+                    `${interpreter.join(' ')}`,
+                );
+            }
+        } else {
+            traceLog(`Interpreter from setting ${namespace}.interpreter: ${interpreter.join(' ')}`);
+        }
+
+        if (interpreter.length === 0) {
+            traceLog(`No interpreter found for ${workspace.uri.fsPath} in settings or from ms-python.python extension`);
         }
     }
 
@@ -151,11 +165,11 @@ function getGlobalValue<T>(config: WorkspaceConfiguration, key: string, defaultV
 export async function getGlobalSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings> {
     const config = getConfiguration(namespace);
 
-    let interpreter: string[] | undefined = [];
+    let interpreter: string[] = [];
     if (includeInterpreter) {
         interpreter = getGlobalValue<string[]>(config, 'interpreter', []);
         if (interpreter === undefined || interpreter.length === 0) {
-            interpreter = (await getInterpreterDetails()).path;
+            interpreter = (await getInterpreterDetails()).path ?? [];
         }
     }
 
@@ -166,7 +180,7 @@ export async function getGlobalSettings(namespace: string, includeInterpreter?: 
         severity: getGlobalValue<Record<string, string>>(config, 'severity', DEFAULT_SEVERITY),
         path: getGlobalValue<string[]>(config, 'path', []),
         interpreter: interpreter ?? [],
-        importStrategy: getGlobalValue<string>(config, 'importStrategy', 'fromEnvironment'),
+        importStrategy: getGlobalValue<string>(config, 'importStrategy', 'useBundled'),
         showNotifications: getGlobalValue<string>(config, 'showNotifications', 'off'),
         extraPaths: getGlobalValue<string[]>(config, 'extraPaths', []),
     };

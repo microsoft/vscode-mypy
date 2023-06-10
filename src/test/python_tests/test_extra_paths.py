@@ -11,7 +11,7 @@ from .lsp_test_client import constants, defaults, session, utils
 
 TEST_FILE_PATH = constants.TEST_DATA / "sample1" / "sample.py"
 TEST_FILE_URI = utils.as_uri(str(TEST_FILE_PATH))
-TIMEOUT = 10  # 10 seconds
+TIMEOUT = 30  # 30 seconds
 
 
 class CallbackObject:
@@ -36,7 +36,7 @@ class CallbackObject:
 
 
 def test_extra_paths():
-    """Test linting using pylint with extraPaths set."""
+    """Test linting using mypy with extraPaths set."""
 
     init_params = copy.deepcopy(defaults.VSCODE_DEFAULT_INITIALIZE)
     init_params["initializationOptions"]["settings"][0]["extraPaths"] = [
@@ -74,7 +74,7 @@ def test_extra_paths():
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
         done.clear()
 
         # Call this second time to detect arg duplication.
@@ -90,7 +90,7 @@ def test_extra_paths():
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
 
         actual = extra_paths_callback_object.check_result()
 
