@@ -118,7 +118,8 @@ class LspSession(MethodDispatcher):
             if should_exit:
                 self.exit_lsp(exit_timeout)
 
-        self._send_request("shutdown", handle_response=_after_shutdown)
+        fut = self._send_request("shutdown", handle_response=_after_shutdown)
+        return fut.result()
 
     def exit_lsp(self, exit_timeout=LSP_EXIT_TIMEOUT):
         """Handles LSP server process exit."""

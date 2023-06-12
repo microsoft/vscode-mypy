@@ -11,7 +11,7 @@ from .lsp_test_client import constants, defaults, session, utils
 
 TEST_FILE_PATH = constants.TEST_DATA / "sample1" / "sample.py"
 TEST_FILE_URI = utils.as_uri(str(TEST_FILE_PATH))
-TIMEOUT = 10  # 10 seconds
+TIMEOUT = 30  # 30 seconds
 
 
 class CallbackObject:
@@ -33,10 +33,10 @@ class CallbackObject:
 
 
 def test_path():
-    """Test linting using pylint bin path set."""
+    """Test linting using mypy bin path set."""
 
     init_params = copy.deepcopy(defaults.VSCODE_DEFAULT_INITIALIZE)
-    init_params["initializationOptions"]["settings"][0]["path"] = ["pylint"]
+    init_params["initializationOptions"]["settings"][0]["path"] = ["mypy"]
 
     argv_callback_object = CallbackObject()
     contents = TEST_FILE_PATH.read_text(encoding="utf-8")
@@ -68,7 +68,7 @@ def test_path():
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
         done.clear()
 
         # Call this second time to detect arg duplication.
@@ -84,7 +84,7 @@ def test_path():
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
 
         actual = argv_callback_object.check_result()
 
@@ -126,7 +126,7 @@ def test_interpreter():
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
         done.clear()
 
         # Call this second time to detect arg duplication.
@@ -142,7 +142,7 @@ def test_interpreter():
         )
 
         # wait for some time to receive all notifications
-        done.wait(TIMEOUT)
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
 
         actual = argv_callback_object.check_result()
 

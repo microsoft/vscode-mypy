@@ -9,8 +9,10 @@ import os
 import pathlib
 import re
 import sys
+import tempfile
 import traceback
-from typing import Any, Dict, Optional, Sequence
+import uuid
+from typing import Any, Dict, List, Optional, Sequence
 
 
 # **********************************************************
@@ -26,28 +28,29 @@ def update_sys_path(path_to_add: str, strategy: str) -> None:
 
 
 # Ensure that we can import LSP libraries, and other bundled libraries.
+BUNDLED_LIBS = os.fspath(pathlib.Path(__file__).parent.parent / "libs")
 update_sys_path(
-    os.fspath(pathlib.Path(__file__).parent.parent / "libs"),
+    BUNDLED_LIBS,
     os.getenv("LS_IMPORT_STRATEGY", "useBundled"),
 )
 
 # **********************************************************
 # Imports needed for the language server goes below this.
 # **********************************************************
-import lsp_jsonrpc as jsonrpc
 import lsp_utils as utils
 import lsprotocol.types as lsp
 from pygls import server, uris, workspace
 
 WORKSPACE_SETTINGS = {}
 GLOBAL_SETTINGS = {}
-RUNNER = pathlib.Path(__file__).parent / "lsp_runner.py"
 
 MAX_WORKERS = 5
 LSP_SERVER = server.LanguageServer(
     name="Mypy", version="v0.1.0", max_workers=MAX_WORKERS
 )
 
+DMYPY_ARGS = {}
+DMYPY_STATUS_FILE_ROOT = None
 
 # **********************************************************
 # Tool specific code goes below this.
@@ -59,13 +62,14 @@ TOOL_ARGS = [
     "--no-error-summary",
     "--show-column-numbers",
     "--show-error-code",
+    "--no-pretty",
 ]
 MIN_VERSION = "1.0.0"
 
 # **********************************************************
 # Linting features start here
 # **********************************************************
-# Captures version of `pylint` in various workspaces.
+# Captures version of `mypy` in various workspaces.
 VERSION_TABLE: Dict[str, (int, int, int)] = {}
 
 
@@ -103,7 +107,7 @@ def _linting_helper(document: workspace.Document) -> list[lsp.Diagnostic]:
             if (major, minor) >= (0, 991):
                 extra_args += ["--show-error-end"]
 
-        result = _run_tool_on_document(document, use_stdin=False, extra_args=extra_args)
+        result = _run_tool_on_document(document, extra_args=extra_args)
         if result and result.stdout:
             log_to_output(f"{document.uri} :\r\n{result.stdout}")
 
@@ -160,8 +164,8 @@ def _parse_output_using_regex(
             end = start
             if "end_line" in data and "end_column" in data:
                 end_line = int(data["end_line"]) - line_offset
-                end_column = int(data["end_column"])
-                if end_column == len(line):
+                end_column = int(data["end_column"]) - col_offset
+                if end_column == (len(line) - col_offset):
                     end_column = 0
                     end_line += 1
 
@@ -194,7 +198,7 @@ def _get_severity(
     except KeyError:
         pass
 
-    return lsp.DiagnosticSeverity.Error
+    return lsp.DiagnosticSeverity.Information
 
 
 # **********************************************************
@@ -231,19 +235,45 @@ def initialize(params: lsp.InitializeParams) -> None:
     paths = "\r\n   ".join(sys.path)
     log_to_output(f"sys.path used to run Server:\r\n   {paths}")
 
+    global DMYPY_STATUS_FILE_ROOT
+    if "DMYPY_STATUS_FILE_ROOT" in os.environ:
+        DMYPY_STATUS_FILE_ROOT = (
+            pathlib.Path(os.environ["DMYPY_STATUS_FILE_ROOT"]) / ".vscode.dmypy_status"
+        )
+    else:
+        DMYPY_STATUS_FILE_ROOT = (
+            pathlib.Path(tempfile.gettempdir()) / ".vscode.dmypy_status"
+        )
+
+    if not DMYPY_STATUS_FILE_ROOT.exists():
+        DMYPY_STATUS_FILE_ROOT.mkdir(parents=True)
+        GIT_IGNORE_FILE = DMYPY_STATUS_FILE_ROOT / ".gitignore"
+        if not GIT_IGNORE_FILE.exists():
+            GIT_IGNORE_FILE.write_text("*", encoding="utf-8")
+
     _log_version_info()
 
 
 @LSP_SERVER.feature(lsp.EXIT)
 def on_exit(_params: Optional[Any] = None) -> None:
     """Handle clean up on exit."""
-    jsonrpc.shutdown_json_rpc()
+    for value in WORKSPACE_SETTINGS.values():
+        try:
+            settings = copy.deepcopy(value)
+            _run_tool([], settings, "kill")
+        except Exception:
+            pass
 
 
 @LSP_SERVER.feature(lsp.SHUTDOWN)
 def on_shutdown(_params: Optional[Any] = None) -> None:
     """Handle clean up on shutdown."""
-    jsonrpc.shutdown_json_rpc()
+    for value in WORKSPACE_SETTINGS.values():
+        try:
+            settings = copy.deepcopy(value)
+            _run_tool([], settings, "stop")
+        except Exception:
+            pass
 
 
 def _log_version_info() -> None:
@@ -252,17 +282,19 @@ def _log_version_info() -> None:
             from packaging.version import parse as parse_version
 
             settings = copy.deepcopy(value)
-            result = _run_tool(["--version"], settings)
+            result = _run_tool(["--version"], settings, "version")
             code_workspace = settings["workspaceFS"]
             log_to_output(
                 f"Version info for linter running for {code_workspace}:\r\n{result.stdout}"
             )
 
-            # This is text we get from running `pylint --version`
-            # pylint 2.12.2 <--- This is the version we want.
-            # astroid 2.9.3
+            # This is text we get from running `mypy --version`
+            # mypy 1.0.0 (compiled: yes) <--- This is the version we want.
             first_line = result.stdout.splitlines(keepends=False)[0]
             actual_version = first_line.split(" ")[1]
+
+            # Update the key with a flag indicating `dmypy`
+            value["dmypy"] = first_line.startswith("dmypy")
 
             version = parse_version(actual_version)
             min_version = parse_version(MIN_VERSION)
@@ -285,7 +317,7 @@ def _log_version_info() -> None:
                 )
         except:  # noqa: E722
             log_to_output(
-                f"Error while detecting pylint version:\r\n{traceback.format_exc()}"
+                f"Error while detecting mypy version:\r\n{traceback.format_exc()}"
             )
 
 
@@ -312,7 +344,7 @@ def _get_global_defaults():
 
 def _update_workspace_settings(settings):
     if not settings:
-        key = os.getcwd()
+        key = utils.normalize_path(os.getcwd())
         WORKSPACE_SETTINGS[key] = {
             "cwd": key,
             "workspaceFS": key,
@@ -322,7 +354,7 @@ def _update_workspace_settings(settings):
         return
 
     for setting in settings:
-        key = uris.to_fs_path(setting["workspace"])
+        key = utils.normalize_path(uris.to_fs_path(setting["workspace"]))
         WORKSPACE_SETTINGS[key] = {
             **setting,
             "workspaceFS": key,
@@ -333,7 +365,7 @@ def _get_settings_by_path(file_path: pathlib.Path):
     workspaces = {s["workspaceFS"] for s in WORKSPACE_SETTINGS.values()}
 
     while file_path != file_path.parent:
-        str_file_path = str(file_path)
+        str_file_path = utils.normalize_path(file_path)
         if str_file_path in workspaces:
             return WORKSPACE_SETTINGS[str_file_path]
         file_path = file_path.parent
@@ -349,8 +381,9 @@ def _get_document_key(document: workspace.Document):
 
         # Find workspace settings for the given file.
         while document_workspace != document_workspace.parent:
-            if str(document_workspace) in workspaces:
-                return str(document_workspace)
+            norm_path = utils.normalize_path(document_workspace)
+            if norm_path in workspaces:
+                return norm_path
             document_workspace = document_workspace.parent
 
     return None
@@ -363,7 +396,7 @@ def _get_settings_by_document(document: workspace.Document | None):
     key = _get_document_key(document)
     if key is None:
         # This is either a non-workspace file or there is no workspace.
-        key = os.fspath(pathlib.Path(document.path).parent)
+        key = utils.normalize_path(pathlib.Path(document.path).parent)
         return {
             "cwd": key,
             "workspaceFS": key,
@@ -377,9 +410,76 @@ def _get_settings_by_document(document: workspace.Document | None):
 # *****************************************************
 # Internal execution APIs.
 # *****************************************************
+def _get_dmypy_args(settings: Dict[str, Any], command: str) -> List[str]:
+    """Returns dmypy args for the given command.
+    Example:
+    For 'run' command returns ['--status-file', '/tmp/dmypy_status.json', 'run', '--']
+
+    Allowed commands:
+    - start   : Start daemon
+    - restart : Restart daemon (stop or kill followed by start)
+    - status  : Show daemon status
+    - stop    : Stop daemon (asks it politely to go away)
+    - kill    : Kill daemon (kills the process)
+    - check   : Check some files (requires daemon)
+    - run     : Check some files, [re]starting daemon if necessary
+    - recheck : Re-check the previous list of files, with optional modifications (requires daemon)
+    - suggest : Suggest a signature or show call sites for a specific function
+    - inspect : Locate and statically inspect expression(s)
+    - hang    : Hang for 100 seconds
+    - daemon  : Run daemon in foreground
+    """
+    key = utils.normalize_path(settings["workspaceFS"])
+    valid_commands = [
+        "start",
+        "restart",
+        "status",
+        "stop",
+        "kill",
+        "check",
+        "run",
+        "recheck",
+        "suggest",
+        "inspect",
+        "hang",
+        "daemon",
+    ]
+    if command not in valid_commands:
+        log_error(f"Invalid dmypy command: {command}")
+        raise ValueError(f"Invalid dmypy command: {command}")
+
+    if key not in DMYPY_ARGS:
+        STATUS_FILE_NAME = os.fspath(
+            DMYPY_STATUS_FILE_ROOT / f"status-{str(uuid.uuid4())}.json"
+        )
+        args = ["--status-file", STATUS_FILE_NAME]
+        DMYPY_ARGS[key] = args
+
+    if command in ["start", "restart", "status", "stop", "kill"]:
+        return DMYPY_ARGS[key] + [command]
+
+    return DMYPY_ARGS[key] + [command, "--"]
+
+
+def _get_env_vars(settings: Dict[str, Any]) -> Dict[str, str]:
+    new_env = {
+        "PYTHONUTF8": "1",
+    }
+    if settings.get("extraPaths", []):
+        mypy_path = os.environ.get("MYPYPATH", "").split(os.pathsep)
+        mypy_path += settings.get("extraPaths", [])
+        new_env["MYPYPATH"] = os.pathsep.join([p for p in mypy_path if p])
+
+    if settings.get("importStrategy") == "useBundled":
+        pythonpath = os.environ.get("PYTHONPATH", "").split(os.pathsep)
+        pythonpath = [BUNDLED_LIBS] + pythonpath
+        new_env["PYTHONPATH"] = os.pathsep.join(pythonpath)
+
+    return new_env
+
+
 def _run_tool_on_document(
     document: workspace.Document,
-    use_stdin: bool = False,
     extra_args: Sequence[str] = [],
 ) -> utils.RunResult | None:
     """Runs tool on the given document.
@@ -388,185 +488,84 @@ def _run_tool_on_document(
     tool via stdin.
     """
     if str(document.uri).startswith("vscode-notebook-cell"):
+        # We don't support running mypy on notebook cells.
+        log_to_output("Skipping mypy on notebook cells.")
         return None
 
     if utils.is_stdlib_file(document.path):
+        log_to_output("Skipping mypy on stdlib file: " + document.path)
         return None
 
     # deep copy here to prevent accidentally updating global settings.
     settings = copy.deepcopy(_get_settings_by_document(document))
-
-    code_workspace = settings["workspaceFS"]
     cwd = settings["cwd"]
 
-    use_path = False
-    use_rpc = False
     if settings["path"]:
-        # 'path' setting takes priority over everything.
-        use_path = True
         argv = settings["path"]
-    elif settings["interpreter"] and not utils.is_current_interpreter(
-        settings["interpreter"][0]
-    ):
-        # If there is a different interpreter set use JSON-RPC to the subprocess
-        # running under that interpreter.
-        argv = [TOOL_MODULE]
-        use_rpc = True
+        if settings.get("dmypy"):
+            argv += _get_dmypy_args(settings, "run")
     else:
-        # if the interpreter is same as the interpreter running this
-        # process then run as module.
-        argv = [TOOL_MODULE]
+        # Otherwise, we run mypy via dmypy.
+        if settings["interpreter"]:
+            argv = settings["interpreter"]
+        else:
+            argv = [sys.executable]
+        argv += ["-m", "mypy.dmypy"]
+        argv += _get_dmypy_args(settings, "run")
 
-    argv += TOOL_ARGS + settings["args"] + extra_args
+    argv += TOOL_ARGS + settings["args"] + extra_args + [document.path]
 
-    if use_stdin:
-        argv += []
-    else:
-        argv += [document.path]
-
-    new_env = None
-    if (use_path or use_rpc) and settings.get("extraPaths", []):
-        mypy_path = os.environ.get("MYPYPATH", "").split(os.pathsep) + settings.get(
-            "extraPaths", []
-        )
-        mypy_path = [p for p in mypy_path if p]
-        new_env = {
-            "MYPYPATH": os.pathsep.join(mypy_path),
-        }
-
-    if use_path:
-        # This mode is used when running executables.
-        log_to_output(" ".join(argv))
-        log_to_output(f"CWD Server: {cwd}")
-        result = utils.run_path(
-            argv=argv,
-            use_stdin=use_stdin,
-            cwd=cwd,
-            env=new_env,
-            source=document.source.replace("\r\n", "\n"),
-        )
-        if result.stderr:
-            log_to_output(result.stderr)
-    elif use_rpc:
-        # This mode is used if the interpreter running this server is different from
-        # the interpreter used for running this server.
-        log_to_output(" ".join(settings["interpreter"] + ["-m"] + argv))
-        log_to_output(f"CWD Linter: {cwd}")
-
-        result = jsonrpc.run_over_json_rpc(
-            workspace=code_workspace,
-            interpreter=settings["interpreter"],
-            module=TOOL_MODULE,
-            argv=argv,
-            use_stdin=use_stdin,
-            cwd=cwd,
-            env=new_env,
-            source=document.source,
-        )
-        if result.exception:
-            log_error(result.exception)
-            result = utils.RunResult(result.stdout, result.stderr)
-        elif result.stderr:
-            log_to_output(result.stderr)
-    else:
-        # In this mode the tool is run as a module in the same process as the language server.
-        log_to_output(" ".join([sys.executable, "-m"] + argv))
-        log_to_output(f"CWD Linter: {cwd}")
-        # This is needed to preserve sys.path, in cases where the tool modifies
-        # sys.path and that might not work for this scenario next time around.
-        with utils.substitute_attr(sys, "path", sys.path[:]):
-            try:
-                from mypy import api
-
-                result = utils.run_api(
-                    lambda mypy_args, _: api.run(mypy_args[1:]),
-                    argv=argv,
-                    use_stdin=use_stdin,
-                    cwd=cwd,
-                    source=document.source,
-                )
-            except Exception:
-                log_error(traceback.format_exc(chain=True))
-                raise
-        if result.stderr:
-            log_to_output(result.stderr)
+    log_to_output(" ".join(argv))
+    log_to_output(f"CWD Server: {cwd}")
+    result = utils.run_path(
+        argv=argv,
+        cwd=cwd,
+        env=_get_env_vars(settings),
+    )
+    if result.stderr:
+        log_to_output(result.stderr)
 
     log_to_output(f"{document.uri} :\r\n{result.stdout}")
     return result
 
 
-def _run_tool(extra_args: Sequence[str], settings) -> utils.RunResult:
+def _run_tool(
+    extra_args: Sequence[str], settings: Dict[str, Any], command: str
+) -> utils.RunResult:
     """Runs tool."""
-    code_workspace = settings["workspaceFS"]
-    cwd = settings["workspaceFS"]
+    cwd = settings["cwd"]
 
-    use_path = False
-    use_rpc = False
-    if len(settings["path"]) > 0:
-        # 'path' setting takes priority over everything.
-        use_path = True
+    if settings["path"]:
         argv = settings["path"]
-    elif len(settings["interpreter"]) > 0 and not utils.is_current_interpreter(
-        settings["interpreter"][0]
-    ):
-        # If there is a different interpreter set use JSON-RPC to the subprocess
-        # running under that interpreter.
-        argv = [TOOL_MODULE]
-        use_rpc = True
+        if settings.get("dmypy"):
+            if command == "version":
+                # version check does not need dmypy command or
+                # status file arguments.
+                pass
+            else:
+                argv += _get_dmypy_args(settings, command)
     else:
-        # if the interpreter is same as the interpreter running this
-        # process then run as module.
-        argv = [TOOL_MODULE]
+        # Otherwise, we run mypy via dmypy.
+        if settings["interpreter"]:
+            argv = settings["interpreter"]
+        else:
+            argv = [sys.executable]
+
+        argv += ["-m", "mypy.dmypy"]
+        if command == "version":
+            # version check does not need dmypy command or
+            # status file arguments.
+            pass
+        else:
+            argv += _get_dmypy_args(settings, command)
 
     argv += extra_args
-    use_stdin = False
+    log_to_output(" ".join(argv))
+    log_to_output(f"CWD Server: {cwd}")
 
-    if use_path:
-        # This mode is used when running executables.
-        log_to_output(" ".join(argv))
-        log_to_output(f"CWD Server: {cwd}")
-        result = utils.run_path(argv=argv, use_stdin=use_stdin, cwd=cwd)
-        if result.stderr:
-            log_to_output(result.stderr)
-    elif use_rpc:
-        # This mode is used if the interpreter running this server is different from
-        # the interpreter used for running this server.
-        log_to_output(" ".join(settings["interpreter"] + ["-m"] + argv))
-        log_to_output(f"CWD Linter: {cwd}")
-        result = jsonrpc.run_over_json_rpc(
-            workspace=code_workspace,
-            interpreter=settings["interpreter"],
-            module=TOOL_MODULE,
-            argv=argv,
-            use_stdin=use_stdin,
-            cwd=cwd,
-        )
-        if result.exception:
-            log_error(result.exception)
-            result = utils.RunResult(result.stdout, result.stderr)
-        elif result.stderr:
-            log_to_output(result.stderr)
-    else:
-        # In this mode the tool is run as a module in the same process as the language server.
-        log_to_output(" ".join([sys.executable, "-m"] + argv))
-        log_to_output(f"CWD Linter: {cwd}")
-        # This is needed to preserve sys.path, in cases where the tool modifies
-        # sys.path and that might not work for this scenario next time around.
-        with utils.substitute_attr(sys, "path", sys.path[:]):
-            try:
-                from mypy import api
-
-                result = utils.run_api(
-                    lambda mypy_args, _: api.run(mypy_args[:]),
-                    argv=argv,
-                    use_stdin=use_stdin,
-                    cwd=cwd,
-                )
-            except Exception:
-                log_error(traceback.format_exc(chain=True))
-                raise
-        if result.stderr:
-            log_to_output(result.stderr)
+    result = utils.run_path(argv=argv, cwd=cwd, env=_get_env_vars(settings))
+    if result.stderr:
+        log_to_output(result.stderr)
 
     log_to_output(f"\r\n{result.stdout}\r\n")
     return result

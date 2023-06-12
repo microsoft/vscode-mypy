@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { Disposable, LanguageStatusSeverity, LogOutputChannel, WorkspaceFolder, l10n } from 'vscode';
+import * as fsapi from 'fs-extra';
+import { Disposable, env, l10n, LanguageStatusSeverity, LogOutputChannel, WorkspaceFolder } from 'vscode';
 import { State } from 'vscode-languageclient';
 import {
     LanguageClient,
@@ -12,9 +13,9 @@ import {
 import { DEBUG_SERVER_SCRIPT_PATH, SERVER_SCRIPT_PATH } from './constants';
 import { traceError, traceInfo, traceVerbose } from './logging';
 import { getDebuggerPath } from './python';
-import { getExtensionSettings, getGlobalSettings, getWorkspaceSettings, ISettings } from './settings';
-import { getLSClientTraceLevel, getProjectRoot } from './utilities';
-import { getDocumentSelector, isVirtualWorkspace } from './vscodeapi';
+import { getExtensionSettings, getGlobalSettings, ISettings } from './settings';
+import { getLSClientTraceLevel } from './utilities';
+import { getDocumentSelector } from './vscodeapi';
 import { updateStatus } from './status';
 
 export type IInitOptions = { settings: ISettings[]; globalSettings: ISettings };
@@ -32,6 +33,7 @@ async function createServer(
     // Set debugger path needed for debugging python code.
     const newEnv = { ...process.env };
     const debuggerPath = await getDebuggerPath();
+    const isDebugScript = await fsapi.pathExists(DEBUG_SERVER_SCRIPT_PATH);
     if (newEnv.USE_DEBUGPY && debuggerPath) {
         newEnv.DEBUGPY_PATH = debuggerPath;
     } else {
@@ -44,8 +46,10 @@ async function createServer(
     // Set notification type
     newEnv.LS_SHOW_NOTIFICATION = settings.showNotifications;
 
+    newEnv.PYTHONUTF8 = '1';
+
     const args =
-        newEnv.USE_DEBUGPY === 'False'
+        newEnv.USE_DEBUGPY === 'False' || !isDebugScript
             ? settings.interpreter.slice(1).concat([SERVER_SCRIPT_PATH])
             : settings.interpreter.slice(1).concat([DEBUG_SERVER_SCRIPT_PATH]);
     traceInfo(`Server run command: ${[command, ...args].join(' ')}`);
@@ -71,6 +75,7 @@ async function createServer(
 
 let _disposables: Disposable[] = [];
 export async function restartServer(
+    workspaceSetting: ISettings,
     serverId: string,
     serverName: string,
     outputChannel: LogOutputChannel,
@@ -86,17 +91,7 @@ export async function restartServer(
         _disposables.forEach((d) => d.dispose());
         _disposables = [];
     }
-    const projectRoot = await getProjectRoot();
-    const workspaceSetting = await getWorkspaceSettings(serverId, projectRoot, true);
-    if (workspaceSetting.interpreter.length === 0) {
-        traceError(
-            'Python interpreter missing:\r\n' +
-                '[Option 1] Select python interpreter using the ms-python.python.\r\n' +
-                `[Option 2] Set an interpreter using "${serverId}.interpreter" setting.\r\n`,
-        );
-        updateStatus(l10n.t('No interpreter'), LanguageStatusSeverity.Error);
-        return undefined;
-    }
+    updateStatus(undefined, LanguageStatusSeverity.Information, true);
 
     const newLSClient = await createServer(workspaceSetting, serverId, serverName, outputChannel, {
         settings: await getExtensionSettings(serverId, true),
@@ -114,21 +109,17 @@ export async function restartServer(
                     break;
                 case State.Running:
                     traceVerbose(`Server State: Running`);
+                    updateStatus(undefined, LanguageStatusSeverity.Information, false);
                     break;
             }
-        }),
-        outputChannel.onDidChangeLogLevel((e) => {
-            newLSClient.setTrace(getLSClientTraceLevel(e));
         }),
     );
     try {
         await newLSClient.start();
+        await newLSClient.setTrace(getLSClientTraceLevel(outputChannel.logLevel, env.logLevel));
     } catch (ex) {
+        updateStatus(l10n.t('Server failed to start.'), LanguageStatusSeverity.Error);
         traceError(`Server: Start failed: ${ex}`);
-        updateStatus(l10n.t('Server failed to start'), LanguageStatusSeverity.Error);
-        return undefined;
     }
-    newLSClient.setTrace(getLSClientTraceLevel(outputChannel.logLevel));
-    updateStatus('', LanguageStatusSeverity.Information);
     return newLSClient;
 }
