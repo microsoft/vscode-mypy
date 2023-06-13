@@ -63,6 +63,9 @@ def test_publish_diagnostics_on_open():
                 "message": 'Name "x" is not defined  ',
                 "severity": 1,
                 "code": "name-defined",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/stable/error_code_list.html#check-that-name-is-defined-name-defined"
+                },
                 "source": "Mypy",
             }
         ],
@@ -117,6 +120,9 @@ def test_publish_diagnostics_on_save():
                 "message": 'Name "x" is not defined  ',
                 "severity": 1,
                 "code": "name-defined",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/stable/error_code_list.html#check-that-name-is-defined-name-defined"
+                },
                 "source": "Mypy",
             }
         ],
@@ -236,6 +242,9 @@ def test_severity_setting(lint_code):
                 "message": 'Name "x" is not defined  ',
                 "severity": 2,
                 "code": "name-defined",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/stable/error_code_list.html#check-that-name-is-defined-name-defined"
+                },
                 "source": "Mypy",
             }
         ],
