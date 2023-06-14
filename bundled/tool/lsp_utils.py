@@ -72,7 +72,7 @@ ERROR_CODE_ANCHORS = {
     "truthy-bool": "error_code_list2.html#check-that-expression-is-not-implicitly-true-in-boolean-context-truthy-bool",
     "truthy-iterable": "error_code_list2.html#check-that-iterable-is-not-implicitly-true-in-boolean-context-truthy-iterable",
     "undefined": "error_code_list2.html#check-that-type-ignore-include-an-error-code-ignore-without-code",
-    "unused-awaitable": "error_code_list2.html#check-that-awaitable-return-value-is-used-unused-awaitable"
+    "unused-awaitable": "error_code_list2.html#check-that-awaitable-return-value-is-used-unused-awaitable",
 }
 
 
