@@ -142,12 +142,12 @@ def _get_group_dict(line: str) -> Optional[Dict[str, str]]:
     return None
 
 
-def _build_message_doc_url(code: str) -> str:
+def _get_code_description(code: str) -> Optional[lsp.CodeDescription]:
     """Build the URL to the documentation for this warning."""
     anchor = utils.ERROR_CODE_ANCHORS.get(code)
     if anchor is None:
-        return ""
-    return utils.ERROR_CODE_BASE_URL + anchor
+        return None
+    return lsp.CodeDescription(href=utils.ERROR_CODE_BASE_URL + anchor)
 
 
 def _parse_output_using_regex(
@@ -182,8 +182,6 @@ def _parse_output_using_regex(
                     character=end_column,  # ignore col_offset for end
                 )
 
-            documentation_url = _build_message_doc_url(data["code"])
-
             diagnostic = lsp.Diagnostic(
                 range=lsp.Range(
                     start=start,
@@ -192,7 +190,7 @@ def _parse_output_using_regex(
                 message=data.get("message"),
                 severity=_get_severity(data["code"], data["type"], severity),
                 code=data["code"],
-                code_description=lsp.CodeDescription(href=documentation_url),
+                code_description=_get_code_description(data["code"]),
                 source=TOOL_DISPLAY,
             )
             diagnostics.append(diagnostic)
