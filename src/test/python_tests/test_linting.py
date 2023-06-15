@@ -64,7 +64,7 @@ def test_publish_diagnostics_on_open():
                 "severity": 1,
                 "code": "name-defined",
                 "codeDescription": {
-                    "href": "https://mypy.readthedocs.io/en/stable/error_code_list.html#check-that-name-is-defined-name-defined"
+                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-name-defined"
                 },
                 "source": "Mypy",
             }
@@ -121,7 +121,7 @@ def test_publish_diagnostics_on_save():
                 "severity": 1,
                 "code": "name-defined",
                 "codeDescription": {
-                    "href": "https://mypy.readthedocs.io/en/stable/error_code_list.html#check-that-name-is-defined-name-defined"
+                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-name-defined"
                 },
                 "source": "Mypy",
             }
@@ -243,7 +243,7 @@ def test_severity_setting(lint_code):
                 "severity": 2,
                 "code": "name-defined",
                 "codeDescription": {
-                    "href": "https://mypy.readthedocs.io/en/stable/error_code_list.html#check-that-name-is-defined-name-defined"
+                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-name-defined"
                 },
                 "source": "Mypy",
             }

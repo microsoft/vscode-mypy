@@ -142,14 +142,6 @@ def _get_group_dict(line: str) -> Optional[Dict[str, str]]:
     return None
 
 
-def _get_code_description(code: str) -> Optional[lsp.CodeDescription]:
-    """Build the URL to the documentation for this warning."""
-    anchor = utils.ERROR_CODE_ANCHORS.get(code)
-    if anchor is None:
-        return None
-    return lsp.CodeDescription(href=utils.ERROR_CODE_BASE_URL + anchor)
-
-
 def _parse_output_using_regex(
     content: str, severity: Dict[str, str]
 ) -> list[lsp.Diagnostic]:
@@ -190,7 +182,9 @@ def _parse_output_using_regex(
                 message=data.get("message"),
                 severity=_get_severity(data["code"], data["type"], severity),
                 code=data["code"],
-                code_description=_get_code_description(data["code"]),
+                code_description=lsp.CodeDescription(
+                    href=utils.ERROR_CODE_BASE_URL + data["code"]
+                ),
                 source=TOOL_DISPLAY,
             )
             diagnostics.append(diagnostic)
