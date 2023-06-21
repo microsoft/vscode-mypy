@@ -182,6 +182,9 @@ def _parse_output_using_regex(
                 message=data.get("message"),
                 severity=_get_severity(data["code"], data["type"], severity),
                 code=data["code"],
+                code_description=lsp.CodeDescription(
+                    href=utils.ERROR_CODE_BASE_URL + data["code"]
+                ),
                 source=TOOL_DISPLAY,
             )
             diagnostics.append(diagnostic)
