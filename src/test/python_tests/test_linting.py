@@ -74,9 +74,9 @@ def test_publish_diagnostics_on_open():
             },
             {
                 "range": {
-                    "start": {"line": 5, "character": 21},
+                    "start": {"line": 6, "character": 21},
                     "end": {
-                        "line": 5,
+                        "line": 6,
                         "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
@@ -90,9 +90,9 @@ def test_publish_diagnostics_on_open():
             },
             {
                 "range": {
-                    "start": {"line": 5, "character": 21},
+                    "start": {"line": 6, "character": 21},
                     "end": {
-                        "line": 5,
+                        "line": 6,
                         "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
@@ -172,9 +172,9 @@ def test_publish_diagnostics_on_save():
             },
             {
                 "range": {
-                    "start": {"line": 5, "character": 21},
+                    "start": {"line": 6, "character": 21},
                     "end": {
-                        "line": 5,
+                        "line": 6,
                         "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
@@ -188,9 +188,9 @@ def test_publish_diagnostics_on_save():
             },
             {
                 "range": {
-                    "start": {"line": 5, "character": 21},
+                    "start": {"line": 6, "character": 21},
                     "end": {
-                        "line": 5,
+                        "line": 6,
                         "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
@@ -335,9 +335,9 @@ def test_severity_setting(lint_code):
             },
             {
                 "range": {
-                    "start": {"line": 5, "character": 21},
+                    "start": {"line": 6, "character": 21},
                     "end": {
-                        "line": 5,
+                        "line": 6,
                         "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
@@ -351,9 +351,9 @@ def test_severity_setting(lint_code):
             },
             {
                 "range": {
-                    "start": {"line": 5, "character": 21},
+                    "start": {"line": 6, "character": 21},
                     "end": {
-                        "line": 5,
+                        "line": 6,
                         "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },

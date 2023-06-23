@@ -127,7 +127,7 @@ DIAGNOSTIC_RE = re.compile(
 )
 
 
-def _get_group_dict(line: str) -> Optional[Dict[str, str]]:
+def _get_group_dict(line: str) -> Optional[Dict[str, str | None]]:
     match = DIAGNOSTIC_RE.match(line)
     if match:
         return match.groupdict()
@@ -182,10 +182,11 @@ def _parse_output_using_regex(
         start_line = int(data["line"])
         start_char = int(data["char"])
 
-        end_line = int(data["end_line"]) if data["end_line"] is not None else start_line
-        end_char = (
-            int(data["end_char"]) + 1 if data["end_char"] is not None else start_char
-        )
+        end_line = data["end_line"]
+        end_char = data["end_char"]
+
+        end_line = int(end_line) if end_line is not None else start_line
+        end_char = int(end_char) + 1 if end_char is not None else start_char
 
         start = lsp.Position(
             line=max(start_line - utils.LINE_OFFSET, 0),
