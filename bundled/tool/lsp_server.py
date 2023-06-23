@@ -104,7 +104,7 @@ def _linting_helper(document: workspace.Document) -> list[lsp.Diagnostic]:
         code_workspace = _get_settings_by_document(document)["workspaceFS"]
         if VERSION_TABLE.get(code_workspace, None):
             major, minor, _ = VERSION_TABLE[code_workspace]
-            if (major, minor) >= (0, 991):
+            if (major, minor) >= (0, 991) and sys.version_info >= (3, 8):
                 extra_args += ["--show-error-end"]
 
         result = _run_tool_on_document(document, extra_args=extra_args)
@@ -123,18 +123,11 @@ def _linting_helper(document: workspace.Document) -> list[lsp.Diagnostic]:
 
 
 DIAGNOSTIC_RE = re.compile(
-    r"(?P<filepath>..[^:]*):(?P<line>\d+):(?P<column>\d+): (?P<type>\w+): (?P<message>.*)\[(?P<code>[\w-]+)\]"
-)
-DIAGNOSTIC_RE_WITH_ENDS = re.compile(
-    r"(?P<filepath>..[^:]*):(?P<line>\d+):(?P<column>\d+):(?P<end_line>\d+):(?P<end_column>\d+): (?P<type>\w+): (?P<message>.*)\[(?P<code>[\w-]+)\]"
+    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+):(?P<char>\d+)(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:  \[(?P<code>[\w-]+)\])?$"
 )
 
 
-def _get_group_dict(line: str) -> Optional[Dict[str, str]]:
-    match = DIAGNOSTIC_RE_WITH_ENDS.match(line)
-    if match:
-        return match.groupdict()
-
+def _get_group_dict(line: str) -> Optional[Dict[str, str | None]]:
     match = DIAGNOSTIC_RE.match(line)
     if match:
         return match.groupdict()
@@ -148,46 +141,78 @@ def _parse_output_using_regex(
     lines: list[str] = content.splitlines()
     diagnostics: list[lsp.Diagnostic] = []
 
-    line_offset = 1
-    col_offset = 1
-    for line in lines:
+    notes = []
+    see_href = None
+
+    for i, line in enumerate(lines):
         if line.startswith("'") and line.endswith("'"):
             line = line[1:-1]
 
         data = _get_group_dict(line)
-        if data:
-            start = lsp.Position(
-                line=max([int(data["line"]) - line_offset, 0]),
-                character=int(data["column"]) - col_offset,
-            )
 
-            end = start
-            if "end_line" in data and "end_column" in data:
-                end_line = int(data["end_line"]) - line_offset
-                end_column = int(data["end_column"])
-                if end_column == (len(line) - col_offset):
-                    end_column = 0
-                    end_line += 1
+        if not data:
+            continue
 
-                end = lsp.Position(
-                    line=max([end_line, 0]),
-                    character=end_column,  # ignore col_offset for end
-                )
+        type_ = data["type"]
+        code = data["code"]
 
-            diagnostic = lsp.Diagnostic(
-                range=lsp.Range(
-                    start=start,
-                    end=end,
-                ),
-                message=data.get("message"),
-                severity=_get_severity(data["code"], data["type"], severity),
-                code=data["code"],
-                code_description=lsp.CodeDescription(
-                    href=utils.ERROR_CODE_BASE_URL + data["code"]
-                ),
-                source=TOOL_DISPLAY,
-            )
-            diagnostics.append(diagnostic)
+        if type_ == "note":
+            if see_href is None and data["message"].startswith(utils.SEE_HREF_PREFIX):
+                see_href = data["message"][utils.SEE_PREFIX_LEN :]
+
+            notes.append(data["message"])
+
+            if i + 1 < len(lines):
+                next_line = lines[i + 1]
+                next_data = _get_group_dict(next_line)
+                if (
+                    next_data
+                    and next_data["type"] == "note"
+                    and next_data["location"] == data["location"]
+                ):
+                    # the note is not finished yet
+                    continue
+
+            message = "\n".join(notes)
+            href = see_href
+        else:
+            message = data["message"]
+            href = utils.ERROR_CODE_BASE_URL + code if code else None
+
+        start_line = int(data["line"])
+        start_char = int(data["char"])
+
+        end_line = data["end_line"]
+        end_char = data["end_char"]
+
+        end_line = int(end_line) if end_line is not None else start_line
+        end_char = int(end_char) + 1 if end_char is not None else start_char
+
+        start = lsp.Position(
+            line=max(start_line - utils.LINE_OFFSET, 0),
+            character=start_char - utils.CHAR_OFFSET,
+        )
+
+        end = lsp.Position(
+            line=max(end_line - utils.LINE_OFFSET, 0),
+            character=end_char - utils.CHAR_OFFSET,
+        )
+
+        diagnostic = lsp.Diagnostic(
+            range=lsp.Range(
+                start=start,
+                end=end,
+            ),
+            message=message,
+            severity=_get_severity(code or "", data["type"], severity),
+            code=code if code else utils.NOTE_CODE if see_href else None,
+            code_description=lsp.CodeDescription(href=href) if href else None,
+            source=TOOL_DISPLAY,
+        )
+        diagnostics.append(diagnostic)
+
+        notes = []
+        see_href = None
 
     return diagnostics
 
