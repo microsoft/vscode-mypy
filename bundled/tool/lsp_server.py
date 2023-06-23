@@ -162,12 +162,16 @@ def _parse_output_using_regex(
 
         if data:
             type_ = data["type"]
+            code = data.get("code", None)
 
             if type_ == "note":
-                if data["message"].startswith("See "):
-                    see_href = data["message"][4:]
+                if see_href is None and data["message"].startswith(
+                    utils.SEE_HREF_PREFIX
+                ):
+                    see_href = data["message"][utils.SEE_PREFIX_LEN :]
 
                 notes.append(data["message"])
+
                 if i + 1 < len(lines):
                     next_line = lines[i + 1]
                     next_data = _get_group_dict(next_line)
@@ -176,14 +180,13 @@ def _parse_output_using_regex(
                         and next_data["type"] == "note"
                         and next_data["location"] == data["location"]
                     ):
+                        # the note is not finished yet
                         continue
 
                 message = "\n".join(notes)
-                code = None
                 href = see_href
             else:
                 message = data["message"]
-                code = data.get("code", None)
                 href = utils.ERROR_CODE_BASE_URL + code if code else None
 
             start = lsp.Position(
@@ -211,7 +214,7 @@ def _parse_output_using_regex(
                 ),
                 message=message,
                 severity=_get_severity(code or "", data["type"], severity),
-                code=code if code else "note" if see_href else None,
+                code=code if code else utils.NOTE_CODE if see_href else None,
                 code_description=lsp.CodeDescription(href=href) if href else None,
                 source=TOOL_DISPLAY,
             )
