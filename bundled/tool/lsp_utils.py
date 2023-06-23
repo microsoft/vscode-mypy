@@ -22,6 +22,7 @@ ERROR_CODE_BASE_URL = "https://mypy.readthedocs.io/en/latest/_refs.html#code-"
 SEE_HREF_PREFIX = "See https://mypy.readthedocs.io"
 SEE_PREFIX_LEN = len("See ")
 NOTE_CODE = "note"
+LINE_OFFSET = CHAR_OFFSET = 1
 
 
 def as_list(content: Union[Any, List[Any], Tuple[Any]]) -> List[Any]:

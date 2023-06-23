@@ -59,7 +59,7 @@ def test_publish_diagnostics_on_open():
             {
                 "range": {
                     "start": {"line": 2, "character": 6},
-                    "end": {"line": 2, "character": 7},
+                    "end": {"line": 2, "character": 6},
                 },
                 "message": 'Name "x" is not defined',
                 "severity": 1,
@@ -74,7 +74,7 @@ def test_publish_diagnostics_on_open():
                     "start": {"line": 5, "character": 21},
                     "end": {
                         "line": 5,
-                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                        "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
                 "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
@@ -90,7 +90,7 @@ def test_publish_diagnostics_on_open():
                     "start": {"line": 5, "character": 21},
                     "end": {
                         "line": 5,
-                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                        "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
                 "message": """This violates the Liskov substitution principle
@@ -154,7 +154,7 @@ def test_publish_diagnostics_on_save():
             {
                 "range": {
                     "start": {"line": 2, "character": 6},
-                    "end": {"line": 2, "character": 7},
+                    "end": {"line": 2, "character": 6},
                 },
                 "message": 'Name "x" is not defined',
                 "severity": 1,
@@ -169,7 +169,7 @@ def test_publish_diagnostics_on_save():
                     "start": {"line": 5, "character": 21},
                     "end": {
                         "line": 5,
-                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                        "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
                 "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
@@ -185,7 +185,7 @@ def test_publish_diagnostics_on_save():
                     "start": {"line": 5, "character": 21},
                     "end": {
                         "line": 5,
-                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                        "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
                 "message": """This violates the Liskov substitution principle
@@ -314,7 +314,7 @@ def test_severity_setting(lint_code):
             {
                 "range": {
                     "start": {"line": 2, "character": 6},
-                    "end": {"line": 2, "character": 7},
+                    "end": {"line": 2, "character": 6},
                 },
                 "message": 'Name "x" is not defined',
                 "severity": 2,
@@ -329,7 +329,7 @@ def test_severity_setting(lint_code):
                     "start": {"line": 5, "character": 21},
                     "end": {
                         "line": 5,
-                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                        "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
                 "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
@@ -345,7 +345,7 @@ def test_severity_setting(lint_code):
                     "start": {"line": 5, "character": 21},
                     "end": {
                         "line": 5,
-                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                        "character": 33 if sys.version_info >= (3, 8) else 21,
                     },
                 },
                 "message": """This violates the Liskov substitution principle

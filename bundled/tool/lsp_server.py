@@ -123,18 +123,11 @@ def _linting_helper(document: workspace.Document) -> list[lsp.Diagnostic]:
 
 
 DIAGNOSTIC_RE = re.compile(
-    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+):(?P<column>\d+)): (?P<type>\w+): (?P<message>.*?)(?:  \[(?P<code>[\w-]+)\])?$"
-)
-DIAGNOSTIC_RE_WITH_ENDS = re.compile(
-    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+):(?P<column>\d+):(?P<end_line>\d+):(?P<end_column>\d+)): (?P<type>\w+): (?P<message>.*?)(?:  \[(?P<code>[\w-]+)\])?$"
+    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+):(?P<char>\d+)(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:  \[(?P<code>[\w-]+)\])?$"
 )
 
 
 def _get_group_dict(line: str) -> Optional[Dict[str, str]]:
-    match = DIAGNOSTIC_RE_WITH_ENDS.match(line)
-    if match:
-        return match.groupdict()
-
     match = DIAGNOSTIC_RE.match(line)
     if match:
         return match.groupdict()
@@ -147,9 +140,6 @@ def _parse_output_using_regex(
 ) -> list[lsp.Diagnostic]:
     lines: list[str] = content.splitlines()
     diagnostics: list[lsp.Diagnostic] = []
-
-    line_offset = 1
-    col_offset = 1
 
     notes = []
     see_href = None
@@ -189,23 +179,26 @@ def _parse_output_using_regex(
                 message = data["message"]
                 href = utils.ERROR_CODE_BASE_URL + code if code else None
 
+            start_line = int(data["line"])
+            start_char = int(data["char"])
+
             start = lsp.Position(
-                line=max([int(data["line"]) - line_offset, 0]),
-                character=int(data["column"]) - col_offset,
+                line=max(start_line - utils.LINE_OFFSET, 0),
+                character=start_char - utils.CHAR_OFFSET,
             )
 
-            end = start
-            if "end_line" in data and "end_column" in data:
-                end_line = int(data["end_line"]) - line_offset
-                end_column = int(data["end_column"])
-                if end_column == (len(line) - col_offset):
-                    end_column = 0
-                    end_line += 1
+            end_line = int(data.get("end_line", start.line))
+            end_char = int(data.get("end_char", start.character))
 
-                end = lsp.Position(
-                    line=max([end_line, 0]),
-                    character=end_column,  # ignore col_offset for end
-                )
+            if end_char > start_char:
+                # if the range is not empty, we need to include the last character
+                # if the range is empty, vscode automatically ranges the surrounding ident
+                end_char += 1
+
+            end = lsp.Position(
+                line=max(end_line - utils.LINE_OFFSET, 0),
+                character=end_char - utils.CHAR_OFFSET,
+            )
 
             diagnostic = lsp.Diagnostic(
                 range=lsp.Range(
