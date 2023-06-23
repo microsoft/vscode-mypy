@@ -67,7 +67,39 @@ def test_publish_diagnostics_on_open():
                     "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-name-defined"
                 },
                 "source": "Mypy",
-            }
+            },
+            {
+                "range": {
+                    "start": {"line": 5, "character": 21},
+                    "end": {"line": 5, "character": 32},
+                },
+                "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                "severity": 1,
+                "code": "override",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-override"
+                },
+                "source": "Mypy",
+            },
+            {
+                "range": {
+                    "start": {"line": 5, "character": 21},
+                    "end": {"line": 5, "character": 32},
+                },
+                "message": """This violates the Liskov substitution principle
+See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+It is recommended for "__eq__" to work with arbitrary objects, for example:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Foo):
+            return NotImplemented
+        return <logic to compare two Foo instances>""",
+                "severity": 3,
+                "code": "note",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides"
+                },
+                "source": "Mypy",
+            },
         ],
     }
 
@@ -124,7 +156,39 @@ def test_publish_diagnostics_on_save():
                     "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-name-defined"
                 },
                 "source": "Mypy",
-            }
+            },
+            {
+                "range": {
+                    "start": {"line": 5, "character": 21},
+                    "end": {"line": 5, "character": 32},
+                },
+                "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                "severity": 1,
+                "code": "override",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-override"
+                },
+                "source": "Mypy",
+            },
+            {
+                "range": {
+                    "start": {"line": 5, "character": 21},
+                    "end": {"line": 5, "character": 32},
+                },
+                "message": """This violates the Liskov substitution principle
+See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+It is recommended for "__eq__" to work with arbitrary objects, for example:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Foo):
+            return NotImplemented
+        return <logic to compare two Foo instances>""",
+                "severity": 3,
+                "code": "note",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides"
+                },
+                "source": "Mypy",
+            },
         ],
     }
 
@@ -246,7 +310,39 @@ def test_severity_setting(lint_code):
                     "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-name-defined"
                 },
                 "source": "Mypy",
-            }
+            },
+            {
+                "range": {
+                    "start": {"line": 5, "character": 21},
+                    "end": {"line": 5, "character": 32},
+                },
+                "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                "severity": 1,
+                "code": "override",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-override"
+                },
+                "source": "Mypy",
+            },
+            {
+                "range": {
+                    "start": {"line": 5, "character": 21},
+                    "end": {"line": 5, "character": 32},
+                },
+                "message": """This violates the Liskov substitution principle
+See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+It is recommended for "__eq__" to work with arbitrary objects, for example:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Foo):
+            return NotImplemented
+        return <logic to compare two Foo instances>""",
+                "severity": 3,
+                "code": "note",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides"
+                },
+                "source": "Mypy",
+            },
         ],
     }
 
