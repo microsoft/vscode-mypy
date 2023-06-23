@@ -197,7 +197,7 @@ def _parse_output_using_regex(
             end = start
             if "end_line" in data and "end_column" in data:
                 end_line = int(data["end_line"]) - line_offset
-                end_column = int(data["end_column"]) - col_offset
+                end_column = int(data["end_column"])
                 if end_column == (len(line) - col_offset):
                     end_column = 0
                     end_line += 1
