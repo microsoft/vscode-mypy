@@ -60,7 +60,7 @@ def test_publish_diagnostics_on_open():
                     "start": {"line": 2, "character": 6},
                     "end": {"line": 2, "character": 6},
                 },
-                "message": 'Name "x" is not defined  ',
+                "message": 'Name "x" is not defined',
                 "severity": 1,
                 "code": "name-defined",
                 "codeDescription": {
@@ -117,7 +117,7 @@ def test_publish_diagnostics_on_save():
                     "start": {"line": 2, "character": 6},
                     "end": {"line": 2, "character": 6},
                 },
-                "message": 'Name "x" is not defined  ',
+                "message": 'Name "x" is not defined',
                 "severity": 1,
                 "code": "name-defined",
                 "codeDescription": {
@@ -239,7 +239,7 @@ def test_severity_setting(lint_code):
                     "start": {"line": 2, "character": 6},
                     "end": {"line": 2, "character": 6},
                 },
-                "message": 'Name "x" is not defined  ',
+                "message": 'Name "x" is not defined',
                 "severity": 2,
                 "code": "name-defined",
                 "codeDescription": {
