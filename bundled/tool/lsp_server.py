@@ -123,10 +123,10 @@ def _linting_helper(document: workspace.Document) -> list[lsp.Diagnostic]:
 
 
 DIAGNOSTIC_RE = re.compile(
-    r"(?P<filepath>..[^:]*):(?P<line>\d+):(?P<column>\d+): (?P<type>\w+): (?P<message>.*)\[(?P<code>[\w-]+)\]"
+    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+):(?P<column>\d+)): (?P<type>\w+): (?P<message>.*?)(?:  \[(?P<code>[\w-]+)\])?$"
 )
 DIAGNOSTIC_RE_WITH_ENDS = re.compile(
-    r"(?P<filepath>..[^:]*):(?P<line>\d+):(?P<column>\d+):(?P<end_line>\d+):(?P<end_column>\d+): (?P<type>\w+): (?P<message>.*)\[(?P<code>[\w-]+)\]"
+    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+):(?P<column>\d+):(?P<end_line>\d+):(?P<end_column>\d+)): (?P<type>\w+): (?P<message>.*?)(?:  \[(?P<code>[\w-]+)\])?$"
 )
 
 
@@ -150,12 +150,38 @@ def _parse_output_using_regex(
 
     line_offset = 1
     col_offset = 1
-    for line in lines:
+
+    notes = []
+    see_href = None
+
+    for i, line in enumerate(lines):
         if line.startswith("'") and line.endswith("'"):
             line = line[1:-1]
 
         data = _get_group_dict(line)
+
         if data:
+            type_ = data["type"]
+
+            if type_ == "note":
+                if data["message"].startswith("See "):
+                    see_href = data["message"][4:]
+
+                notes.append(data["message"])
+                if i + 1 < len(lines):
+                    next_line = lines[i + 1]
+                    next_data = _get_group_dict(next_line)
+                    if next_data and next_data["type"] == "note":
+                        continue
+
+                message = "\n".join(notes)
+                code = None
+                href = see_href
+            else:
+                message = data["message"]
+                code = data.get("code", None)
+                href = utils.ERROR_CODE_BASE_URL + code if code else None
+
             start = lsp.Position(
                 line=max([int(data["line"]) - line_offset, 0]),
                 character=int(data["column"]) - col_offset,
@@ -179,15 +205,16 @@ def _parse_output_using_regex(
                     start=start,
                     end=end,
                 ),
-                message=data.get("message"),
-                severity=_get_severity(data["code"], data["type"], severity),
-                code=data["code"],
-                code_description=lsp.CodeDescription(
-                    href=utils.ERROR_CODE_BASE_URL + data["code"]
-                ),
+                message=message,
+                severity=_get_severity(code or "", data["type"], severity),
+                code=code if code else "note" if see_href else None,
+                code_description=lsp.CodeDescription(href=href) if href else None,
                 source=TOOL_DISPLAY,
             )
             diagnostics.append(diagnostic)
+
+            notes = []
+            see_href = None
 
     return diagnostics
 
