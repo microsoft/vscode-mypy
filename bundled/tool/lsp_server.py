@@ -171,7 +171,11 @@ def _parse_output_using_regex(
                 if i + 1 < len(lines):
                     next_line = lines[i + 1]
                     next_data = _get_group_dict(next_line)
-                    if next_data and next_data["type"] == "note":
+                    if (
+                        next_data
+                        and next_data["type"] == "note"
+                        and next_data["location"] == data["location"]
+                    ):
                         continue
 
                 message = "\n".join(notes)
