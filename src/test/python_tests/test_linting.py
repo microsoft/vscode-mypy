@@ -58,7 +58,7 @@ def test_publish_diagnostics_on_open():
             {
                 "range": {
                     "start": {"line": 2, "character": 6},
-                    "end": {"line": 2, "character": 6},
+                    "end": {"line": 2, "character": 7},
                 },
                 "message": 'Name "x" is not defined  ',
                 "severity": 1,
@@ -115,7 +115,7 @@ def test_publish_diagnostics_on_save():
             {
                 "range": {
                     "start": {"line": 2, "character": 6},
-                    "end": {"line": 2, "character": 6},
+                    "end": {"line": 2, "character": 7},
                 },
                 "message": 'Name "x" is not defined  ',
                 "severity": 1,
@@ -237,7 +237,7 @@ def test_severity_setting(lint_code):
             {
                 "range": {
                     "start": {"line": 2, "character": 6},
-                    "end": {"line": 2, "character": 6},
+                    "end": {"line": 2, "character": 7},
                 },
                 "message": 'Name "x" is not defined  ',
                 "severity": 2,
