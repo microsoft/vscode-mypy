@@ -104,7 +104,7 @@ def _linting_helper(document: workspace.Document) -> list[lsp.Diagnostic]:
         code_workspace = _get_settings_by_document(document)["workspaceFS"]
         if VERSION_TABLE.get(code_workspace, None):
             major, minor, _ = VERSION_TABLE[code_workspace]
-            if (major, minor) >= (0, 991):
+            if (major, minor) >= (0, 991) and sys.version_info >= (3, 8):
                 extra_args += ["--show-error-end"]
 
         result = _run_tool_on_document(document, extra_args=extra_args)
@@ -150,71 +150,68 @@ def _parse_output_using_regex(
 
         data = _get_group_dict(line)
 
-        if data:
-            type_ = data["type"]
-            code = data.get("code", None)
+        if not data:
+            continue
 
-            if type_ == "note":
-                if see_href is None and data["message"].startswith(
-                    utils.SEE_HREF_PREFIX
+        type_ = data["type"]
+        code = data["code"]
+
+        if type_ == "note":
+            if see_href is None and data["message"].startswith(utils.SEE_HREF_PREFIX):
+                see_href = data["message"][utils.SEE_PREFIX_LEN :]
+
+            notes.append(data["message"])
+
+            if i + 1 < len(lines):
+                next_line = lines[i + 1]
+                next_data = _get_group_dict(next_line)
+                if (
+                    next_data
+                    and next_data["type"] == "note"
+                    and next_data["location"] == data["location"]
                 ):
-                    see_href = data["message"][utils.SEE_PREFIX_LEN :]
+                    # the note is not finished yet
+                    continue
 
-                notes.append(data["message"])
+            message = "\n".join(notes)
+            href = see_href
+        else:
+            message = data["message"]
+            href = utils.ERROR_CODE_BASE_URL + code if code else None
 
-                if i + 1 < len(lines):
-                    next_line = lines[i + 1]
-                    next_data = _get_group_dict(next_line)
-                    if (
-                        next_data
-                        and next_data["type"] == "note"
-                        and next_data["location"] == data["location"]
-                    ):
-                        # the note is not finished yet
-                        continue
+        start_line = int(data["line"])
+        start_char = int(data["char"])
 
-                message = "\n".join(notes)
-                href = see_href
-            else:
-                message = data["message"]
-                href = utils.ERROR_CODE_BASE_URL + code if code else None
+        end_line = int(data["end_line"]) if data["end_line"] is not None else start_line
+        end_char = (
+            int(data["end_char"]) + 1 if data["end_char"] is not None else start_char
+        )
 
-            start_line = int(data["line"])
-            start_char = int(data["char"])
+        start = lsp.Position(
+            line=max(start_line - utils.LINE_OFFSET, 0),
+            character=start_char - utils.CHAR_OFFSET,
+        )
 
-            start = lsp.Position(
-                line=max(start_line - utils.LINE_OFFSET, 0),
-                character=start_char - utils.CHAR_OFFSET,
-            )
+        end = lsp.Position(
+            line=max(end_line - utils.LINE_OFFSET, 0),
+            character=end_char - utils.CHAR_OFFSET,
+        )
 
-            end_line = int(data.get("end_line", start.line))
-            end_char = int(data.get("end_char", start.character))
+        diagnostic = lsp.Diagnostic(
+            range=lsp.Range(
+                start=start,
+                end=end,
+            ),
+            message=message,
+            severity=_get_severity(code or "", data["type"], severity),
+            code=code if code else utils.NOTE_CODE if see_href else None,
+            code_description=lsp.CodeDescription(href=href) if href else None,
+            source=TOOL_DISPLAY,
+        )
+        diagnostics.append(diagnostic)
 
-            if end_char > start_char:
-                # if the range is not empty, we need to include the last character
-                # if the range is empty, vscode automatically ranges the surrounding ident
-                end_char += 1
-
-            end = lsp.Position(
-                line=max(end_line - utils.LINE_OFFSET, 0),
-                character=end_char - utils.CHAR_OFFSET,
-            )
-
-            diagnostic = lsp.Diagnostic(
-                range=lsp.Range(
-                    start=start,
-                    end=end,
-                ),
-                message=message,
-                severity=_get_severity(code or "", data["type"], severity),
-                code=code if code else utils.NOTE_CODE if see_href else None,
-                code_description=lsp.CodeDescription(href=href) if href else None,
-                source=TOOL_DISPLAY,
-            )
-            diagnostics.append(diagnostic)
-
-            notes = []
-            see_href = None
+        notes = []
+        see_href = None
 
     return diagnostics
 
