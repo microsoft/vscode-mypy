@@ -4,6 +4,7 @@
 Test for linting over LSP.
 """
 
+import sys
 from threading import Event
 
 import pytest
@@ -71,7 +72,10 @@ def test_publish_diagnostics_on_open():
             {
                 "range": {
                     "start": {"line": 5, "character": 21},
-                    "end": {"line": 5, "character": 32},
+                    "end": {
+                        "line": 5,
+                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                    },
                 },
                 "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
                 "severity": 1,
@@ -84,7 +88,10 @@ def test_publish_diagnostics_on_open():
             {
                 "range": {
                     "start": {"line": 5, "character": 21},
-                    "end": {"line": 5, "character": 32},
+                    "end": {
+                        "line": 5,
+                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                    },
                 },
                 "message": """This violates the Liskov substitution principle
 See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
@@ -160,7 +167,10 @@ def test_publish_diagnostics_on_save():
             {
                 "range": {
                     "start": {"line": 5, "character": 21},
-                    "end": {"line": 5, "character": 32},
+                    "end": {
+                        "line": 5,
+                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                    },
                 },
                 "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
                 "severity": 1,
@@ -173,7 +183,10 @@ def test_publish_diagnostics_on_save():
             {
                 "range": {
                     "start": {"line": 5, "character": 21},
-                    "end": {"line": 5, "character": 32},
+                    "end": {
+                        "line": 5,
+                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                    },
                 },
                 "message": """This violates the Liskov substitution principle
 See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
@@ -314,7 +327,10 @@ def test_severity_setting(lint_code):
             {
                 "range": {
                     "start": {"line": 5, "character": 21},
-                    "end": {"line": 5, "character": 32},
+                    "end": {
+                        "line": 5,
+                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                    },
                 },
                 "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
                 "severity": 1,
@@ -327,7 +343,10 @@ def test_severity_setting(lint_code):
             {
                 "range": {
                     "start": {"line": 5, "character": 21},
-                    "end": {"line": 5, "character": 32},
+                    "end": {
+                        "line": 5,
+                        "character": 32 if sys.version_info >= (3, 8) else 21,
+                    },
                 },
                 "message": """This violates the Liskov substitution principle
 See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
