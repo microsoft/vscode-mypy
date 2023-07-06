@@ -60,6 +60,7 @@ TOOL_DISPLAY = "Mypy"
 TOOL_ARGS = [
     "--no-color-output",
     "--no-error-summary",
+    "--show-absolute-path",
     "--show-column-numbers",
     "--show-error-code",
     "--no-pretty",
@@ -113,7 +114,9 @@ def _linting_helper(document: workspace.Document) -> list[lsp.Diagnostic]:
 
             # deep copy here to prevent accidentally updating global settings.
             settings = copy.deepcopy(_get_settings_by_document(document))
-            return _parse_output_using_regex(result.stdout, settings["severity"])
+            return _parse_output_using_regex(
+                result.stdout, settings["severity"], document
+            )
     except Exception:
         LSP_SERVER.show_message_log(
             f"Linting failed with error:\r\n{traceback.format_exc()}",
@@ -136,7 +139,7 @@ def _get_group_dict(line: str) -> Optional[Dict[str, str | None]]:
 
 
 def _parse_output_using_regex(
-    content: str, severity: Dict[str, str]
+    content: str, severity: Dict[str, str], document: workspace.Document
 ) -> list[lsp.Diagnostic]:
     lines: list[str] = content.splitlines()
     diagnostics: list[lsp.Diagnostic] = []
@@ -151,6 +154,11 @@ def _parse_output_using_regex(
         data = _get_group_dict(line)
 
         if not data:
+            continue
+
+        # skip output from other documents
+        # (causes --follow-imports=normal to behave like silent).
+        if data["filepath"] != document.path:
             continue
 
         type_ = data["type"]
