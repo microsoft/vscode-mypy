@@ -40,12 +40,26 @@ def _check_files(names: List[str]) -> None:
 
 
 def _update_pip_packages(session: nox.Session) -> None:
-    session.run("pip-compile", "--generate-hashes", "--upgrade", "./requirements.in")
     session.run(
         "pip-compile",
         "--generate-hashes",
+        "--resolver=backtracking",
+        "--upgrade",
+        "./requirements.in",
+    )
+    session.run(
+        "pip-compile",
+        "--generate-hashes",
+        "--resolver=backtracking",
         "--upgrade",
         "./src/test/python_tests/requirements.in",
+    )
+    session.run(
+        "pip-compile",
+        "--generate-hashes",
+        "--resolver=backtracking",
+        "--upgrade",
+        "./dev_requirements.in",
     )
 
 
@@ -91,7 +105,7 @@ def _update_npm_packages(session: nox.Session) -> None:
         new_package_json += "\n"
     package_json_path.write_text(new_package_json, encoding="utf-8")
 
-    session.run("npm", "audit", "fix", external=True)
+    session.run("npm", "audit", "fix", external=True, success_codes=[0, 1])
     session.run("npm", "install", external=True)
 
 
@@ -255,17 +269,18 @@ def _get_wheel_urls(data, version):
 
 
 def _download_and_extract(root, url, version):
-    root = os.getcwd() if root is None or root == "." else root
-    print(url)
-    with url_lib.urlopen(url) as response:
-        data = response.read()
-        with zipfile.ZipFile(io.BytesIO(data), "r") as wheel:
-            for zip_info in wheel.infolist():
-                # Ignore dist info since we are merging multiple wheels
-                if ".dist-info/" in zip_info.filename:
-                    continue
-                print("\t" + zip_info.filename)
-                wheel.extract(zip_info.filename, root)
+    if "manylinux" in url or "macosx" in url or "win_amd64" in url:
+        root = os.getcwd() if root is None or root == "." else root
+        print(url)
+        with url_lib.urlopen(url) as response:
+            data = response.read()
+            with zipfile.ZipFile(io.BytesIO(data), "r") as wheel:
+                for zip_info in wheel.infolist():
+                    # Ignore dist info since we are merging multiple wheels
+                    if ".dist-info/" in zip_info.filename:
+                        continue
+                    print("\t" + zip_info.filename)
+                    wheel.extract(zip_info.filename, root)
 
 
 def _install_wheels(root, package_name, version="latest"):
