@@ -46,8 +46,6 @@ async function createServer(
     // Set notification type
     newEnv.LS_SHOW_NOTIFICATION = settings.showNotifications;
 
-    newEnv.PYTHONUTF8 = '1';
-
     const args =
         newEnv.USE_DEBUGPY === 'False' || !isDebugScript
             ? settings.interpreter.slice(1).concat([SERVER_SCRIPT_PATH])
