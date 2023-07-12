@@ -54,6 +54,18 @@ async function createServer(
             : settings.interpreter.slice(1).concat([DEBUG_SERVER_SCRIPT_PATH]);
     traceInfo(`Server run command: ${[command, ...args].join(' ')}`);
 
+    if (fsapi.existsSync(command)) {
+        traceInfo(`Server executable exists: "${command}"`);
+    } else {
+        traceError(`Server executable does not exist: "${command}"`);
+    }
+
+    if (fsapi.existsSync(SERVER_SCRIPT_PATH)) {
+        traceInfo(`Server executable exists: "${SERVER_SCRIPT_PATH}"`);
+    } else {
+        traceError(`Server executable does not exist: "${SERVER_SCRIPT_PATH}"`);
+    }
+
     const serverOptions: ServerOptions = {
         command,
         args,
