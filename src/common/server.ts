@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+import * as proc from 'child_process';
 import * as fsapi from 'fs-extra';
 import { Disposable, env, l10n, LanguageStatusSeverity, LogOutputChannel, WorkspaceFolder } from 'vscode';
 import { State } from 'vscode-languageclient';
@@ -64,23 +65,24 @@ async function createServer(
         traceError(`Server executable does not exist: "${SERVER_SCRIPT_PATH}"`);
     }
 
-    const serverOptions: ServerOptions = {
-        command,
-        args,
-        options: { cwd, env: newEnv },
-    };
+    try {
+        const serverOptions: ServerOptions = () =>
+            Promise.resolve(proc.spawn(command, args, { cwd, env: newEnv, stdio: ['pipe', 'pipe', 'pipe'] }));
 
-    // Options to control the language client
-    const clientOptions: LanguageClientOptions = {
-        // Register the server for python documents
-        documentSelector: getDocumentSelector(),
-        outputChannel: outputChannel,
-        traceOutputChannel: outputChannel,
-        revealOutputChannelOn: RevealOutputChannelOn.Never,
-        initializationOptions,
-    };
-
-    return new LanguageClient(serverId, serverName, serverOptions, clientOptions);
+        // Options to control the language client
+        const clientOptions: LanguageClientOptions = {
+            // Register the server for python documents
+            documentSelector: getDocumentSelector(),
+            outputChannel: outputChannel,
+            traceOutputChannel: outputChannel,
+            revealOutputChannelOn: RevealOutputChannelOn.Never,
+            initializationOptions,
+        };
+        return new LanguageClient(serverId, serverName, serverOptions, clientOptions);
+    } catch (err) {
+        traceError(`Error starting server: ${err}`);
+        throw err;
+    }
 }
 
 let _disposables: Disposable[] = [];
@@ -103,33 +105,33 @@ export async function restartServer(
     }
     updateStatus(undefined, LanguageStatusSeverity.Information, true);
 
-    const newLSClient = await createServer(workspaceSetting, serverId, serverName, outputChannel, {
-        settings: await getExtensionSettings(serverId, true),
-        globalSettings: await getGlobalSettings(serverId, false),
-    });
-    traceInfo(`Server: Start requested.`);
-    _disposables.push(
-        newLSClient.onDidChangeState((e) => {
-            switch (e.newState) {
-                case State.Stopped:
-                    traceVerbose(`Server State: Stopped`);
-                    break;
-                case State.Starting:
-                    traceVerbose(`Server State: Starting`);
-                    break;
-                case State.Running:
-                    traceVerbose(`Server State: Running`);
-                    updateStatus(undefined, LanguageStatusSeverity.Information, false);
-                    break;
-            }
-        }),
-    );
     try {
+        const newLSClient = await createServer(workspaceSetting, serverId, serverName, outputChannel, {
+            settings: await getExtensionSettings(serverId, true),
+            globalSettings: await getGlobalSettings(serverId, false),
+        });
+        traceInfo(`Server: Start requested.`);
+        _disposables.push(
+            newLSClient.onDidChangeState((e) => {
+                switch (e.newState) {
+                    case State.Stopped:
+                        traceVerbose(`Server State: Stopped`);
+                        break;
+                    case State.Starting:
+                        traceVerbose(`Server State: Starting`);
+                        break;
+                    case State.Running:
+                        traceVerbose(`Server State: Running`);
+                        updateStatus(undefined, LanguageStatusSeverity.Information, false);
+                        break;
+                }
+            }),
+        );
         await newLSClient.start();
         await newLSClient.setTrace(getLSClientTraceLevel(outputChannel.logLevel, env.logLevel));
+        return newLSClient;
     } catch (ex) {
         updateStatus(l10n.t('Server failed to start.'), LanguageStatusSeverity.Error);
         traceError(`Server: Start failed: ${ex}`);
     }
-    return newLSClient;
 }
