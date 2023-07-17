@@ -66,9 +66,7 @@
         "configuration": {
             "properties": {
                 "mypy-type-checker.args": {
-                    "default": [
-                        "--follow-imports=normal"
-                    ],
+                    "default": [],
                     "markdownDescription": "%settings.args.description%",
                     "items": {
                         "type": "string"
