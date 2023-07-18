@@ -157,7 +157,8 @@ def _parse_output_using_regex(
             continue
 
         # skip output from other documents
-        # (causes --follow-imports=normal to behave like silent).
+        # (mypy will follow imports, so may include errors found in other
+        # documents; this is fine/correct, we just need to account for it).
         if data["filepath"] != document.path:
             continue
 
