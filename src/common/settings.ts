@@ -150,7 +150,7 @@ export async function getWorkspaceSettings(
         severity: config.get<Record<string, string>>('severity', DEFAULT_SEVERITY),
         path: resolveVariables(mypyPath, workspace),
         interpreter: resolveVariables(interpreter, workspace),
-        importStrategy: config.get<string>('importStrategy', 'fromEnvironment'),
+        importStrategy: config.get<string>('importStrategy', 'useBundled'),
         showNotifications: config.get<string>('showNotifications', 'off'),
         extraPaths: resolveVariables(extraPaths, workspace),
     };

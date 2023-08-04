@@ -48,12 +48,3 @@ export function getWorkspaceFolder(uri: Uri): WorkspaceFolder | undefined {
 export function createLanguageStatusItem(id: string, selector: DocumentSelector): LanguageStatusItem {
     return languages.createLanguageStatusItem(id, selector);
 }
-
-export function getDocumentSelector(): DocumentSelector {
-    return isVirtualWorkspace()
-        ? [{ language: 'python' }]
-        : [
-              { scheme: 'file', language: 'python' },
-              { scheme: 'untitled', language: 'python' },
-          ];
-}
