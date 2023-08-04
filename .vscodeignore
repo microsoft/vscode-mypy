@@ -24,3 +24,5 @@ noxfile.py
 **/requirements.txt
 **/requirements.in
 **/tool/_debug_server.py
+build/**
+.mypy_cache/**

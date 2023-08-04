@@ -2,7 +2,8 @@
 // Licensed under the MIT License.
 
 import { LanguageStatusItem, Disposable, l10n, LanguageStatusSeverity } from 'vscode';
-import { createLanguageStatusItem, getDocumentSelector } from './vscodeapi';
+import { createLanguageStatusItem } from './vscodeapi';
+import { getDocumentSelector } from './utilities';
 import { Command } from 'vscode-languageclient';
 
 let _status: LanguageStatusItem | undefined;

@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import * as fsapi from 'fs-extra';
-import { Disposable, env, l10n, LanguageStatusSeverity, LogOutputChannel, WorkspaceFolder } from 'vscode';
+import { Disposable, env, l10n, LanguageStatusSeverity, LogOutputChannel } from 'vscode';
 import { State } from 'vscode-languageclient';
 import {
     LanguageClient,
@@ -14,8 +14,7 @@ import { DEBUG_SERVER_SCRIPT_PATH, SERVER_SCRIPT_PATH } from './constants';
 import { traceError, traceInfo, traceVerbose } from './logging';
 import { getDebuggerPath } from './python';
 import { getExtensionSettings, getGlobalSettings, ISettings } from './settings';
-import { getLSClientTraceLevel } from './utilities';
-import { getDocumentSelector } from './vscodeapi';
+import { getDocumentSelector, getLSClientTraceLevel } from './utilities';
 import { updateStatus } from './status';
 
 export type IInitOptions = { settings: ISettings[]; globalSettings: ISettings };
