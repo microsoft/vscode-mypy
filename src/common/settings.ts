@@ -52,19 +52,7 @@ function resolveVariables(value: string[], workspace?: WorkspaceFolder): string[
 function getArgs(namespace: string, workspace: WorkspaceFolder): string[] {
     const config = getConfiguration(namespace, workspace.uri);
     const args = config.get<string[]>('args', []);
-
-    if (args.length > 0) {
-        return args;
-    }
-
-    const legacyConfig = getConfiguration('python', workspace.uri);
-    const legacyArgs = legacyConfig.get<string[]>('linting.mypyArgs', []);
-    if (legacyArgs.length > 0) {
-        traceLog(`Using legacy Mypy args from 'python.linting.mypyArgs': ${legacyArgs.join(' ')}.`);
-        return legacyArgs;
-    }
-
-    return [];
+    return args;
 }
 
 function getPath(namespace: string, workspace: WorkspaceFolder): string[] {

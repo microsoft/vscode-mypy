@@ -75,7 +75,7 @@ suite('Settings Tests', () => {
             pythonConfigMock
                 .setup((c) => c.get('linting.mypyArgs', []))
                 .returns(() => [])
-                .verifiable(TypeMoq.Times.atLeastOnce());
+                .verifiable(TypeMoq.Times.never());
             pythonConfigMock
                 .setup((c) => c.get('linting.mypyPath', ''))
                 .returns(() => 'mypy')
@@ -214,8 +214,8 @@ suite('Settings Tests', () => {
 
             pythonConfigMock
                 .setup((c) => c.get<string[]>('linting.mypyArgs', []))
-                .returns(() => ['${userHome}', '${workspaceFolder}', '${workspaceFolder:workspace1}', '${cwd}'])
-                .verifiable(TypeMoq.Times.atLeastOnce());
+                .returns(() => [])
+                .verifiable(TypeMoq.Times.never());
             pythonConfigMock
                 .setup((c) => c.get('linting.mypyPath', ''))
                 .returns(() => '${userHome}/bin/mypy')
@@ -237,12 +237,7 @@ suite('Settings Tests', () => {
             const settings: ISettings = await getWorkspaceSettings('mypy', workspace1);
 
             assert.deepStrictEqual(settings.cwd, `${process.env.HOME || process.env.USERPROFILE}/bin`);
-            assert.deepStrictEqual(settings.args, [
-                process.env.HOME || process.env.USERPROFILE,
-                workspace1.uri.fsPath,
-                workspace1.uri.fsPath,
-                process.cwd(),
-            ]);
+            assert.deepStrictEqual(settings.args, []);
             assert.deepStrictEqual(settings.importStrategy, 'useBundled');
             assert.deepStrictEqual(settings.interpreter, []);
             assert.deepStrictEqual(settings.path, [`${process.env.HOME || process.env.USERPROFILE}/bin/mypy`]);
