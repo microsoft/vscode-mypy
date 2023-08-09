@@ -21,6 +21,7 @@ export interface ISettings {
     importStrategy: string;
     showNotifications: string;
     extraPaths: string[];
+    reportingScope: string;
 }
 
 export function getExtensionSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings[]> {
@@ -150,9 +151,10 @@ export async function getWorkspaceSettings(
         severity: config.get<Record<string, string>>('severity', DEFAULT_SEVERITY),
         path: resolveVariables(mypyPath, workspace),
         interpreter: resolveVariables(interpreter, workspace),
-        importStrategy: config.get<string>('importStrategy', 'fromEnvironment'),
+        importStrategy: config.get<string>('importStrategy', 'useBundled'),
         showNotifications: config.get<string>('showNotifications', 'off'),
         extraPaths: resolveVariables(extraPaths, workspace),
+        reportingScope: config.get<string>('reportingScope', 'file'),
     };
     return workspaceSetting;
 }
@@ -183,6 +185,7 @@ export async function getGlobalSettings(namespace: string, includeInterpreter?: 
         importStrategy: getGlobalValue<string>(config, 'importStrategy', 'useBundled'),
         showNotifications: getGlobalValue<string>(config, 'showNotifications', 'off'),
         extraPaths: getGlobalValue<string[]>(config, 'extraPaths', []),
+        reportingScope: config.get<string>('reportingScope', 'file'),
     };
     return setting;
 }
