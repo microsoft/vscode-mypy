@@ -25,6 +25,7 @@ If you want to disable mypy, you can [disable this extension](https://code.visua
 | mypy-type-checker.interpreter       | `[]`                                          | Path to a python interpreter to use to run the linter server.                                                                                                                                                                                                     |
 | mypy-type-checker.importStrategy    | `useBundled`                                  | Setting to choose where to load `mypy` from. `useBundled` picks mypy bundled with the extension. `fromEnvironment` uses `mypy` available in the environment.                                                                                                      |
 | mypy-type-checker.showNotifications | `off`                                         | Setting to control when a notification is shown.                                                                                                                                                                                                                  |
+| mypy-type-checker.reportingScope    | `file`                                        | (experimental) Setting to control if problems are reported for files open in the editor (`file`) or for the entire workspace (`workspace`).                                                                                                                       |
 
 ## Commands
 

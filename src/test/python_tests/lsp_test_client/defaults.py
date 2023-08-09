@@ -6,14 +6,14 @@ Default initialize request params.
 
 import os
 
-from .constants import PROJECT_ROOT
+from .constants import TEST_DATA
 from .utils import as_uri, get_initialization_options
 
 VSCODE_DEFAULT_INITIALIZE = {
     "processId": os.getpid(),
     "clientInfo": {"name": "vscode", "version": "1.45.0"},
-    "rootPath": str(PROJECT_ROOT),
-    "rootUri": as_uri(str(PROJECT_ROOT)),
+    "rootPath": str(TEST_DATA),
+    "rootUri": as_uri(str(TEST_DATA)),
     "capabilities": {
         "workspace": {
             "applyEdit": True,
@@ -214,6 +214,6 @@ VSCODE_DEFAULT_INITIALIZE = {
         "window": {"workDoneProgress": True},
     },
     "trace": "verbose",
-    "workspaceFolders": [{"uri": as_uri(str(PROJECT_ROOT)), "name": "my_project"}],
+    "workspaceFolders": [{"uri": as_uri(str(TEST_DATA)), "name": "my_project"}],
     "initializationOptions": get_initialization_options(),
 }

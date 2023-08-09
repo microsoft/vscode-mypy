@@ -81,16 +81,14 @@ VERSION_TABLE: Dict[str, (int, int, int)] = {}
 def did_open(params: lsp.DidOpenTextDocumentParams) -> None:
     """LSP handler for textDocument/didOpen request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    diagnostics: list[lsp.Diagnostic] = _linting_helper(document)
-    LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
+    _linting_helper(document)
 
 
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
 def did_save(params: lsp.DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    diagnostics: list[lsp.Diagnostic] = _linting_helper(document)
-    LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
+    _linting_helper(document)
 
 
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_CLOSE)
@@ -101,11 +99,14 @@ def did_close(params: lsp.DidCloseTextDocumentParams) -> None:
     LSP_SERVER.publish_diagnostics(document.uri, [])
 
 
-def _linting_helper(document: workspace.Document) -> list[lsp.Diagnostic]:
+def _linting_helper(document: workspace.Document) -> None:
     try:
         extra_args = []
 
-        code_workspace = _get_settings_by_document(document)["workspaceFS"]
+        # deep copy here to prevent accidentally updating global settings.
+        settings = copy.deepcopy(_get_settings_by_document(document))
+
+        code_workspace = settings["workspaceFS"]
         if VERSION_TABLE.get(code_workspace, None):
             major, minor, _ = VERSION_TABLE[code_workspace]
             if (major, minor) >= (0, 991) and sys.version_info >= (3, 8):
@@ -114,12 +115,21 @@ def _linting_helper(document: workspace.Document) -> list[lsp.Diagnostic]:
         result = _run_tool_on_document(document, extra_args=extra_args)
         if result and result.stdout:
             log_to_output(f"{document.uri} :\r\n{result.stdout}")
-
-            # deep copy here to prevent accidentally updating global settings.
-            settings = copy.deepcopy(_get_settings_by_document(document))
-            return _parse_output_using_regex(
-                result.stdout, settings["severity"], document
+            parse_results = _parse_output_using_regex(
+                result.stdout, settings["severity"]
             )
+            reportingScope = settings["reportingScope"]
+            for file_path, diagnostics in parse_results.items():
+                # skip output from other documents
+                # (mypy will follow imports, so may include errors found in other
+                # documents; this is fine/correct, we just need to account for it).
+                if reportingScope == "file" and utils.is_same_path(
+                    file_path, document.path
+                ):
+                    LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
+                elif reportingScope == "workspace":
+                    uri = uris.from_fs_path(utils.normalize_path(file_path))
+                    LSP_SERVER.publish_diagnostics(uri, diagnostics)
     except Exception:
         LSP_SERVER.show_message_log(
             f"Linting failed with error:\r\n{traceback.format_exc()}",
@@ -142,10 +152,10 @@ def _get_group_dict(line: str) -> Optional[Dict[str, str | None]]:
 
 
 def _parse_output_using_regex(
-    content: str, severity: Dict[str, str], document: workspace.Document
-) -> list[lsp.Diagnostic]:
-    lines: list[str] = content.splitlines()
-    diagnostics: list[lsp.Diagnostic] = []
+    content: str, severity: Dict[str, str]
+) -> Dict[str, List[lsp.Diagnostic]]:
+    lines: List[str] = content.splitlines()
+    diagnostics: Dict[str, List[lsp.Diagnostic]] = {}
 
     notes = []
     see_href = None
@@ -159,12 +169,7 @@ def _parse_output_using_regex(
         if not data:
             continue
 
-        # skip output from other documents
-        # (mypy will follow imports, so may include errors found in other
-        # documents; this is fine/correct, we just need to account for it).
-        if data["filepath"] != document.path:
-            continue
-
+        filepath = utils.normalize_path(data["filepath"])
         type_ = data["type"]
         code = data["code"]
 
@@ -221,7 +226,10 @@ def _parse_output_using_regex(
             code_description=lsp.CodeDescription(href=href) if href else None,
             source=TOOL_DISPLAY,
         )
-        diagnostics.append(diagnostic)
+        if filepath in diagnostics:
+            diagnostics[filepath].append(diagnostic)
+        else:
+            diagnostics[filepath] = [diagnostic]
 
         notes = []
         see_href = None
@@ -379,6 +387,7 @@ def _get_global_defaults():
         "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "useBundled"),
         "showNotifications": GLOBAL_SETTINGS.get("showNotifications", "off"),
         "extraPaths": GLOBAL_SETTINGS.get("extraPaths", []),
+        "reportingScope": GLOBAL_SETTINGS.get("reportingScope", "file"),
     }
 
 
@@ -553,7 +562,11 @@ def _run_tool_on_document(
         argv += ["-m", "mypy.dmypy"]
         argv += _get_dmypy_args(settings, "run")
 
-    argv += TOOL_ARGS + settings["args"] + extra_args + [document.path]
+    argv += TOOL_ARGS + settings["args"] + extra_args
+    if settings["reportingScope"] == "file":
+        argv += [document.path]
+    else:
+        argv += [cwd]
 
     log_to_output(" ".join(argv))
     log_to_output(f"CWD Server: {cwd}")

@@ -2,6 +2,7 @@
 Test for path and interpreter settings.
 """
 import copy
+import sys
 from threading import Event
 from typing import Dict
 
@@ -36,7 +37,11 @@ def test_path():
     """Test linting using mypy bin path set."""
 
     init_params = copy.deepcopy(defaults.VSCODE_DEFAULT_INITIALIZE)
-    init_params["initializationOptions"]["settings"][0]["path"] = ["mypy"]
+    init_params["initializationOptions"]["settings"][0]["path"] = [
+        sys.executable,
+        "-m",
+        "mypy",
+    ]
 
     argv_callback_object = CallbackObject()
     contents = TEST_FILE_PATH.read_text(encoding="utf-8")

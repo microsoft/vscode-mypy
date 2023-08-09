@@ -9,7 +9,7 @@ import pathlib
 import platform
 from random import choice
 
-from .constants import PROJECT_ROOT
+from .constants import PROJECT_ROOT, TEST_DATA
 
 
 def normalizecase(path: str) -> str:
@@ -67,8 +67,8 @@ def get_initialization_options():
         value = properties[prop]["default"]
         setting[name] = value
 
-    setting["workspace"] = as_uri(str(PROJECT_ROOT))
+    setting["workspace"] = as_uri(str(TEST_DATA))
     setting["interpreter"] = []
-    setting["cwd"] = str(PROJECT_ROOT)
+    setting["cwd"] = str(TEST_DATA)
 
     return {"settings": [setting]}
