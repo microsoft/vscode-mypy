@@ -488,7 +488,7 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
                             "start": {"line": 2, "character": 9},
                             "end": {
                                 "line": 2,
-                                "character": 9 if sys.version_info >= (3, 8) else 9,
+                                "character": 16 if sys.version_info >= (3, 8) else 9,
                             },
                         },
                         "message": 'Incompatible types in assignment (expression has type "str", variable has type "int")',
