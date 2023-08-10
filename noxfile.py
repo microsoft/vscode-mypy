@@ -26,9 +26,6 @@ def _install_bundle(session: nox.Session) -> None:
         "./requirements.txt",
     )
 
-    session.install("packaging")
-    _install_wheels(f"{os.getcwd()}/bundled/libs", "typed-ast")
-
 
 def _check_files(names: List[str]) -> None:
     root_dir = pathlib.Path(__file__).parent
@@ -116,14 +113,14 @@ def _setup_template_environment(session: nox.Session) -> None:
     session.run("npm", "install", external=True)
 
 
-@nox.session(python="3.7")
+@nox.session(python="3.8")
 def install_bundled_libs(session):
     """Installs the libraries that will be bundled with the extension."""
     session.install("wheel")
     _install_bundle(session)
 
 
-@nox.session(python="3.7")
+@nox.session(python="3.8")
 def setup(session: nox.Session) -> None:
     """Sets up the extension for development."""
     _setup_template_environment(session)
@@ -238,7 +235,7 @@ def _update_readme() -> None:
     content = readme_file.read_text(encoding="utf-8")
     regex = r"\`([a-zA-Z0-9]+)=([0-9]+\.[0-9]+\.[0-9]+)\`"
     result = re.sub(regex, f"`{module}={version}`", content, 0, re.MULTILINE)
-    content = readme_file.write_text(result, encoding="utf-8")
+    readme_file.write_text(result, encoding="utf-8")
 
 
 @nox.session()
