@@ -119,7 +119,7 @@
                     ],
                     "scope": "resource",
                     "type": "string",
-                    "tags":[
+                    "tags": [
                         "experimental"
                     ]
                 },
@@ -170,7 +170,7 @@
         ]
     },
     "dependencies": {
-        "@vscode/python-extension": "^1.0.2",
+        "@vscode/python-extension": "^1.0.4",
         "fs-extra": "^11.1.1",
         "vscode-languageclient": "^8.1.0"
     },
@@ -182,20 +182,20 @@
         "@types/node": "16.x",
         "@types/sinon": "^10.0.16",
         "@types/vscode": "^1.74.0",
-        "@typescript-eslint/eslint-plugin": "^5.61.0",
-        "@typescript-eslint/parser": "^5.61.0",
-        "@vscode/test-electron": "^2.3.3",
-        "@vscode/vsce": "^2.19.0",
+        "@typescript-eslint/eslint-plugin": "^6.3.0",
+        "@typescript-eslint/parser": "^6.3.0",
+        "@vscode/test-electron": "^2.3.4",
+        "@vscode/vsce": "^2.20.1",
         "chai": "^4.3.7",
-        "eslint": "^8.44.0",
-        "glob": "^10.3.1",
+        "eslint": "^8.46.0",
+        "glob": "^10.3.3",
         "mocha": "^10.2.0",
-        "prettier": "^3.0.0",
+        "prettier": "^3.0.1",
         "sinon": "^15.2.0",
         "ts-loader": "^9.4.4",
         "typemoq": "^2.1.0",
         "typescript": "^5.1.6",
-        "webpack": "^5.88.1",
+        "webpack": "^5.88.2",
         "webpack-cli": "^5.1.4"
     }
 }
