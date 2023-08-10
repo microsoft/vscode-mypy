@@ -65,7 +65,7 @@ TOOL_ARGS = [
     "--no-error-summary",
     "--show-absolute-path",
     "--show-column-numbers",
-    "--show-error-code",
+    "--show-error-codes",
     "--no-pretty",
 ]
 MIN_VERSION = "1.0.0"
