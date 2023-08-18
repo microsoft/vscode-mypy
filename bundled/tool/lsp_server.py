@@ -119,13 +119,13 @@ def _linting_helper(document: workspace.Document) -> None:
                 result.stdout, settings["severity"]
             )
             reportingScope = settings["reportingScope"]
-            diagnostics_contain_document_entry = false
+            diagnostics_contain_document_entry = False
             for file_path, diagnostics in parse_results.items():
                 is_file_same_as_document = utils.is_same_path(
                     file_path, document.path
                 )
                 if is_file_same_as_document:
-                    diagnostics_contain_document_entry = true
+                    diagnostics_contain_document_entry = True
                 # skip output from other documents
                 # (mypy will follow imports, so may include errors found in other
                 # documents; this is fine/correct, we just need to account for it).
