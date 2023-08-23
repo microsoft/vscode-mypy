@@ -119,17 +119,23 @@ def _linting_helper(document: workspace.Document) -> None:
                 result.stdout, settings["severity"]
             )
             reportingScope = settings["reportingScope"]
+            diagnostics_contain_document_entry = False
             for file_path, diagnostics in parse_results.items():
+                is_file_same_as_document = utils.is_same_path(file_path, document.path)
+                if is_file_same_as_document:
+                    diagnostics_contain_document_entry = True
                 # skip output from other documents
                 # (mypy will follow imports, so may include errors found in other
                 # documents; this is fine/correct, we just need to account for it).
-                if reportingScope == "file" and utils.is_same_path(
-                    file_path, document.path
-                ):
+                if reportingScope == "file" and is_file_same_as_document:
                     LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
                 elif reportingScope == "workspace":
                     uri = uris.from_fs_path(utils.normalize_path(file_path))
                     LSP_SERVER.publish_diagnostics(uri, diagnostics)
+            if not diagnostics_contain_document_entry:
+                # Ensure that if nothing is returned for this document, at least
+                # an empty diagnostic is returned to clear any old errors out.
+                LSP_SERVER.publish_diagnostics(document.uri, [])
     except Exception:
         LSP_SERVER.show_message_log(
             f"Linting failed with error:\r\n{traceback.format_exc()}",
