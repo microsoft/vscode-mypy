@@ -186,6 +186,7 @@ export function checkIfConfigurationChanged(e: ConfigurationChangeEvent, namespa
         `${namespace}.interpreter`,
         `${namespace}.importStrategy`,
         `${namespace}.showNotifications`,
+        `${namespace}.reportingScope`,
     ];
     const changed = settings.map((s) => e.affectsConfiguration(s));
     return changed.includes(true);

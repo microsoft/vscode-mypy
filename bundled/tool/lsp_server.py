@@ -95,11 +95,28 @@ def did_save(params: lsp.DidSaveTextDocumentParams) -> None:
 def did_close(params: lsp.DidCloseTextDocumentParams) -> None:
     """LSP handler for textDocument/didClose request."""
     document = LSP_SERVER.workspace.get_document(params.text_document.uri)
-    # Publishing empty diagnostics to clear the entries for this file.
-    LSP_SERVER.publish_diagnostics(document.uri, [])
+    settings = _get_settings_by_document(document)
+    if settings["reportingScope"] == "file":
+        # Publishing empty diagnostics to clear the entries for this file.
+        LSP_SERVER.publish_diagnostics(document.uri, [])
+
+
+def _is_empty_diagnostics(
+    filepath: str, results: Optional[Dict[str, str | None]]
+) -> bool:
+    if results is None:
+        return True
+    for reported_path, diagnostics in results.items():
+        if utils.is_same_path(filepath, reported_path) and diagnostics:
+            return False
+    return True
+
+
+_reported_file_paths = set()
 
 
 def _linting_helper(document: workspace.Document) -> None:
+    global _reported_file_paths
     try:
         extra_args = []
 
@@ -119,23 +136,29 @@ def _linting_helper(document: workspace.Document) -> None:
                 result.stdout, settings["severity"]
             )
             reportingScope = settings["reportingScope"]
-            diagnostics_contain_document_entry = False
             for file_path, diagnostics in parse_results.items():
                 is_file_same_as_document = utils.is_same_path(file_path, document.path)
-                if is_file_same_as_document:
-                    diagnostics_contain_document_entry = True
                 # skip output from other documents
                 # (mypy will follow imports, so may include errors found in other
                 # documents; this is fine/correct, we just need to account for it).
                 if reportingScope == "file" and is_file_same_as_document:
                     LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
                 elif reportingScope == "workspace":
-                    uri = uris.from_fs_path(utils.normalize_path(file_path))
+                    _reported_file_paths.add(file_path)
+                    uri = uris.from_fs_path(file_path)
                     LSP_SERVER.publish_diagnostics(uri, diagnostics)
-            if not diagnostics_contain_document_entry:
-                # Ensure that if nothing is returned for this document, at least
-                # an empty diagnostic is returned to clear any old errors out.
-                LSP_SERVER.publish_diagnostics(document.uri, [])
+
+            if reportingScope == "file":
+                if _is_empty_diagnostics(document.path, parse_results):
+                    # Ensure that if nothing is returned for this document, at least
+                    # an empty diagnostic is returned to clear any old errors out.
+                    LSP_SERVER.publish_diagnostics(document.uri, [])
+
+            if reportingScope == "workspace":
+                for file_path in _reported_file_paths:
+                    if file_path not in parse_results:
+                        uri = uris.from_fs_path(file_path)
+                        LSP_SERVER.publish_diagnostics(uri, [])
     except Exception:
         LSP_SERVER.show_message_log(
             f"Linting failed with error:\r\n{traceback.format_exc()}",
