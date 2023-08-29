@@ -673,9 +673,7 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
                     }
                 ],
             },
-            {
-                "uri": TEST_FILE3_URI,
-                "diagnostics": [],
-            },
         ]
+
+        # Only reports diagnostics on files that have problems
         assert_that(actual, is_(expected))
