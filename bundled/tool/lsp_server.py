@@ -159,6 +159,8 @@ def _linting_helper(document: workspace.Document) -> None:
                     if file_path not in parse_results:
                         uri = uris.from_fs_path(file_path)
                         LSP_SERVER.publish_diagnostics(uri, [])
+        else:
+            LSP_SERVER.publish_diagnostics(document.uri, [])
     except Exception:
         LSP_SERVER.show_message_log(
             f"Linting failed with error:\r\n{traceback.format_exc()}",
