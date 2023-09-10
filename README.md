@@ -26,6 +26,7 @@ If you want to disable mypy, you can [disable this extension](https://code.visua
 | mypy-type-checker.importStrategy    | `useBundled`                                  | Setting to choose where to load `mypy` from. `useBundled` picks mypy bundled with the extension. `fromEnvironment` uses `mypy` available in the environment.                                                                                                      |
 | mypy-type-checker.showNotifications | `off`                                         | Setting to control when a notification is shown.                                                                                                                                                                                                                  |
 | mypy-type-checker.reportingScope    | `file`                                        | (experimental) Setting to control if problems are reported for files open in the editor (`file`) or for the entire workspace (`workspace`).                                                                                                                       |
+| mypy-type-checker.preferDaemon      | true                                          | (experimental) Setting to control how to invoke mypy. If true, dmypy is preferred over mypy; otherwise mypy is preferred. The latter will slow down linting, since we will have to run `mypy` executable every time on file save or open. Note that this setting will be ignored if `mypy-type-checker.path` is set. |
 
 ## Commands
 

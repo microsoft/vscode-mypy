@@ -8,6 +8,7 @@
     "settings.importStrategy.useBundled.description": "Always use the bundled version of `mypy`.",
     "settings.importStrategy.fromEnvironment.description": "Use `mypy` from environment, fallback to bundled version only if `mypy` not available in the environment.",
     "settings.interpreter.description": "When set to a path to python executable, extension will use that to launch the server and any subprocess.",
+    "settings.preferDaemon.description": "When set to true, `dmypy` is preferred over `mypy`; otherwise, `mypy` is preferred. This setting may be ignored if `mypy-type-checker.path` is set. NOTE: Setting this option to false may slowdown linting.",
     "settings.reportingScope.description": "Defines the scope of the problems reported by the extension.",
     "settings.reportingScope.file.description": "Problems are reported for the files open in the editor only.",
     "settings.reportingScope.workspace.description": "Problems are reported for files in the workspace.",
