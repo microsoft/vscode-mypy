@@ -106,6 +106,12 @@
                     },
                     "type": "array"
                 },
+                "mypy-type-checker.preferDaemon": {
+                    "default": true,
+                    "markdownDescription": "%settings.preferDaemon.description%",
+                    "scope": "resource",
+                    "type": "boolean"
+                },
                 "mypy-type-checker.reportingScope": {
                     "default": "file",
                     "markdownDescription": "%settings.reportingScope.description%",

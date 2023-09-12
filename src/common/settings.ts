@@ -22,6 +22,7 @@ export interface ISettings {
     showNotifications: string;
     extraPaths: string[];
     reportingScope: string;
+    preferDaemon: boolean;
 }
 
 export function getExtensionSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings[]> {
@@ -143,6 +144,7 @@ export async function getWorkspaceSettings(
         showNotifications: config.get<string>('showNotifications', 'off'),
         extraPaths: resolveVariables(extraPaths, workspace),
         reportingScope: config.get<string>('reportingScope', 'file'),
+        preferDaemon: config.get<boolean>('preferDaemon', true),
     };
     return workspaceSetting;
 }
@@ -174,6 +176,7 @@ export async function getGlobalSettings(namespace: string, includeInterpreter?: 
         showNotifications: getGlobalValue<string>(config, 'showNotifications', 'off'),
         extraPaths: getGlobalValue<string[]>(config, 'extraPaths', []),
         reportingScope: config.get<string>('reportingScope', 'file'),
+        preferDaemon: config.get<boolean>('preferDaemon', true),
     };
     return setting;
 }

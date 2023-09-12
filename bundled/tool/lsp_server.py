@@ -12,7 +12,11 @@ import sys
 import tempfile
 import traceback
 import uuid
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence
+
+from packaging.version import Version
+from packaging.version import parse as parse_version
 
 
 # **********************************************************
@@ -73,8 +77,65 @@ MIN_VERSION = "1.0.0"
 # **********************************************************
 # Linting features start here
 # **********************************************************
-# Captures version of `mypy` in various workspaces.
-VERSION_TABLE: Dict[str, (int, int, int)] = {}
+
+
+@dataclass
+class MypyInfo:
+    version: Version
+    is_daemon: bool
+
+
+# Stores infomation of `mypy` executable in various workspaces.
+MYPY_INFO_TABLE: Dict[str, MypyInfo] = {}
+
+
+def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
+    try:
+        code_workspace = settings["workspaceFS"]
+        if code_workspace not in MYPY_INFO_TABLE:
+            # This is text we get from running `mypy --version`
+            # mypy 1.0.0 (compiled: yes) <--- This is the version we want.
+            result = _run_unidentified_tool(["--version"], copy.deepcopy(settings))
+            log_to_output(
+                f"Version info for linter running for {code_workspace}:\r\n{result.stdout}"
+            )
+            first_line = result.stdout.splitlines(keepends=False)[0]
+            is_daemon = first_line.startswith("dmypy")
+            version_str = first_line.split(" ")[1]
+            version = parse_version(version_str)
+            MYPY_INFO_TABLE[code_workspace] = MypyInfo(version, is_daemon)
+        return MYPY_INFO_TABLE[code_workspace]
+    except:  # noqa: E722
+        log_to_output(
+            f"Error while checking mypy executable:\r\n{traceback.format_exc()}"
+        )
+
+
+def _run_unidentified_tool(
+    extra_args: Sequence[str], settings: Dict[str, Any]
+) -> utils.RunResult:
+    """Runs the tool given by the settings without knowing what it is.
+
+    This is supposed to be called only in `get_mypy_info`.
+    """
+    cwd = settings["cwd"]
+
+    if settings["path"]:
+        argv = settings["path"]
+    else:
+        argv = settings["interpreter"] or [sys.executable]
+        argv += ["-m", "mypy.dmypy" if settings["preferDaemon"] else "mypy"]
+
+    argv += extra_args
+    log_to_output(" ".join(argv))
+    log_to_output(f"CWD Server: {cwd}")
+
+    result = utils.run_path(argv=argv, cwd=cwd, env=_get_env_vars(settings))
+    if result.stderr:
+        log_to_output(result.stderr)
+
+    log_to_output(f"\r\n{result.stdout}\r\n")
+    return result
 
 
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_OPEN)
@@ -123,11 +184,9 @@ def _linting_helper(document: workspace.Document) -> None:
         # deep copy here to prevent accidentally updating global settings.
         settings = copy.deepcopy(_get_settings_by_document(document))
 
-        code_workspace = settings["workspaceFS"]
-        if VERSION_TABLE.get(code_workspace, None):
-            major, minor, _ = VERSION_TABLE[code_workspace]
-            if (major, minor) >= (0, 991) and sys.version_info >= (3, 8):
-                extra_args += ["--show-error-end"]
+        version = get_mypy_info(settings).version
+        if (version.major, version.minor) >= (0, 991) and sys.version_info >= (3, 8):
+            extra_args += ["--show-error-end"]
 
         result = _run_tool_on_document(document, extra_args=extra_args)
         if result and result.stdout:
@@ -336,67 +395,41 @@ def initialize(params: lsp.InitializeParams) -> None:
 @LSP_SERVER.feature(lsp.EXIT)
 def on_exit(_params: Optional[Any] = None) -> None:
     """Handle clean up on exit."""
-    for value in WORKSPACE_SETTINGS.values():
-        try:
-            settings = copy.deepcopy(value)
-            _run_tool([], settings, "kill")
-        except Exception:
-            pass
+    for settings in WORKSPACE_SETTINGS.values():
+        if get_mypy_info(settings).is_daemon:
+            try:
+                _run_dmypy_command([], copy.deepcopy(settings), "kill")
+            except Exception:
+                pass
 
 
 @LSP_SERVER.feature(lsp.SHUTDOWN)
 def on_shutdown(_params: Optional[Any] = None) -> None:
     """Handle clean up on shutdown."""
-    for value in WORKSPACE_SETTINGS.values():
-        try:
-            settings = copy.deepcopy(value)
-            _run_tool([], settings, "stop")
-        except Exception:
-            pass
+    for settings in WORKSPACE_SETTINGS.values():
+        if get_mypy_info(settings).is_daemon:
+            try:
+                _run_dmypy_command([], copy.deepcopy(settings), "stop")
+            except Exception:
+                pass
 
 
 def _log_version_info() -> None:
-    for value in WORKSPACE_SETTINGS.values():
-        try:
-            from packaging.version import parse as parse_version
+    for settings in WORKSPACE_SETTINGS.values():
+        code_workspace = settings["workspaceFS"]
+        actual_version = get_mypy_info(settings).version
+        min_version = parse_version(MIN_VERSION)
 
-            settings = copy.deepcopy(value)
-            result = _run_tool(["--version"], settings, "version")
-            code_workspace = settings["workspaceFS"]
-            log_to_output(
-                f"Version info for linter running for {code_workspace}:\r\n{result.stdout}"
+        if actual_version < min_version:
+            log_error(
+                f"Version of linter running for {code_workspace} is NOT supported:\r\n"
+                f"SUPPORTED {TOOL_MODULE}>={min_version}\r\n"
+                f"FOUND {TOOL_MODULE}=={actual_version}\r\n"
             )
-
-            # This is text we get from running `mypy --version`
-            # mypy 1.0.0 (compiled: yes) <--- This is the version we want.
-            first_line = result.stdout.splitlines(keepends=False)[0]
-            actual_version = first_line.split(" ")[1]
-
-            # Update the key with a flag indicating `dmypy`
-            value["dmypy"] = first_line.startswith("dmypy")
-
-            version = parse_version(actual_version)
-            min_version = parse_version(MIN_VERSION)
-            VERSION_TABLE[code_workspace] = (
-                version.major,
-                version.minor,
-                version.micro,
-            )
-
-            if version < min_version:
-                log_error(
-                    f"Version of linter running for {code_workspace} is NOT supported:\r\n"
-                    f"SUPPORTED {TOOL_MODULE}>={min_version}\r\n"
-                    f"FOUND {TOOL_MODULE}=={actual_version}\r\n"
-                )
-            else:
-                log_to_output(
-                    f"SUPPORTED {TOOL_MODULE}>={min_version}\r\n"
-                    f"FOUND {TOOL_MODULE}=={actual_version}\r\n"
-                )
-        except:  # noqa: E722
+        else:
             log_to_output(
-                f"Error while detecting mypy version:\r\n{traceback.format_exc()}"
+                f"SUPPORTED {TOOL_MODULE}>={min_version}\r\n"
+                f"FOUND {TOOL_MODULE}=={actual_version}\r\n"
             )
 
 
@@ -582,17 +615,11 @@ def _run_tool_on_document(
 
     if settings["path"]:
         argv = settings["path"]
-        if settings.get("dmypy"):
-            argv += _get_dmypy_args(settings, "run")
     else:
-        # Otherwise, we run mypy via dmypy.
-        if settings["interpreter"]:
-            argv = settings["interpreter"]
-        else:
-            argv = [sys.executable]
-        argv += ["-m", "mypy.dmypy"]
+        argv = settings["interpreter"] or [sys.executable]
+        argv += ["-m", "mypy.dmypy" if get_mypy_info(settings).is_daemon else "mypy"]
+    if get_mypy_info(settings).is_daemon:
         argv += _get_dmypy_args(settings, "run")
-
     argv += TOOL_ARGS + settings["args"] + extra_args
     if settings["reportingScope"] == "file":
         argv += [document.path]
@@ -613,36 +640,22 @@ def _run_tool_on_document(
     return result
 
 
-def _run_tool(
+def _run_dmypy_command(
     extra_args: Sequence[str], settings: Dict[str, Any], command: str
 ) -> utils.RunResult:
-    """Runs tool."""
+    if not get_mypy_info(settings).is_daemon:
+        log_error(f"dmypy command called in non-daemon context: {command}")
+        raise ValueError(f"dmypy command called in non-daemon context: {command}")
+
     cwd = settings["cwd"]
 
     if settings["path"]:
         argv = settings["path"]
-        if settings.get("dmypy"):
-            if command == "version":
-                # version check does not need dmypy command or
-                # status file arguments.
-                pass
-            else:
-                argv += _get_dmypy_args(settings, command)
     else:
-        # Otherwise, we run mypy via dmypy.
-        if settings["interpreter"]:
-            argv = settings["interpreter"]
-        else:
-            argv = [sys.executable]
-
+        argv = settings["interpreter"] or [sys.executable]
         argv += ["-m", "mypy.dmypy"]
-        if command == "version":
-            # version check does not need dmypy command or
-            # status file arguments.
-            pass
-        else:
-            argv += _get_dmypy_args(settings, command)
 
+    argv += _get_dmypy_args(settings, command)
     argv += extra_args
     log_to_output(" ".join(argv))
     log_to_output(f"CWD Server: {cwd}")
