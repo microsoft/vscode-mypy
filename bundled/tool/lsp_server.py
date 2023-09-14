@@ -15,9 +15,6 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence
 
-from packaging.version import Version
-from packaging.version import parse as parse_version
-
 
 # **********************************************************
 # Update sys.path before importing any bundled libraries.
@@ -46,6 +43,8 @@ update_sys_path(
 # **********************************************************
 import lsp_utils as utils
 import lsprotocol.types as lsp
+from packaging.version import Version
+from packaging.version import parse as parse_version
 from pygls import server, uris, workspace
 
 WORKSPACE_SETTINGS = {}
