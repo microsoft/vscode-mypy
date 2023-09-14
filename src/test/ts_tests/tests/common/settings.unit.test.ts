@@ -79,7 +79,7 @@ suite('Settings Tests', () => {
             pythonConfigMock
                 .setup((c) => c.get('linting.mypyPath', ''))
                 .returns(() => 'mypy')
-                .verifiable(TypeMoq.Times.atLeastOnce());
+                .verifiable(TypeMoq.Times.never());
             pythonConfigMock
                 .setup((c) => c.get('analysis.extraPaths', []))
                 .returns(() => [])
@@ -219,7 +219,7 @@ suite('Settings Tests', () => {
             pythonConfigMock
                 .setup((c) => c.get('linting.mypyPath', ''))
                 .returns(() => '${userHome}/bin/mypy')
-                .verifiable(TypeMoq.Times.atLeastOnce());
+                .verifiable(TypeMoq.Times.never());
             pythonConfigMock
                 .setup((c) => c.get<string[]>('analysis.extraPaths', []))
                 .returns(() => [
@@ -240,7 +240,7 @@ suite('Settings Tests', () => {
             assert.deepStrictEqual(settings.args, []);
             assert.deepStrictEqual(settings.importStrategy, 'useBundled');
             assert.deepStrictEqual(settings.interpreter, []);
-            assert.deepStrictEqual(settings.path, [`${process.env.HOME || process.env.USERPROFILE}/bin/mypy`]);
+            assert.deepStrictEqual(settings.path, []);
             assert.deepStrictEqual(settings.severity, DEFAULT_SEVERITY);
             assert.deepStrictEqual(settings.showNotifications, 'off');
             assert.deepStrictEqual(settings.workspace, workspace1.uri.toString());
