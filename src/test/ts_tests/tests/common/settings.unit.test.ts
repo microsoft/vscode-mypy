@@ -79,7 +79,7 @@ suite('Settings Tests', () => {
             pythonConfigMock
                 .setup((c) => c.get('linting.mypyPath', ''))
                 .returns(() => 'mypy')
-                .verifiable(TypeMoq.Times.atLeastOnce());
+                .verifiable(TypeMoq.Times.never());
             pythonConfigMock
                 .setup((c) => c.get('analysis.extraPaths', []))
                 .returns(() => [])
@@ -219,7 +219,7 @@ suite('Settings Tests', () => {
             pythonConfigMock
                 .setup((c) => c.get('linting.mypyPath', ''))
                 .returns(() => '${userHome}/bin/mypy')
-                .verifiable(TypeMoq.Times.atLeastOnce());
+                .verifiable(TypeMoq.Times.never());
             pythonConfigMock
                 .setup((c) => c.get<string[]>('analysis.extraPaths', []))
                 .returns(() => [

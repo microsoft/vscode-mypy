@@ -65,12 +65,6 @@ function getPath(namespace: string, workspace: WorkspaceFolder): string[] {
         return path;
     }
 
-    const legacyConfig = getConfiguration('python', workspace.uri);
-    const legacyPath = legacyConfig.get<string>('linting.mypyPath', '');
-    if (legacyPath.length > 0 && legacyPath !== 'mypy') {
-        traceLog(`Using legacy Mypy path from 'python.linting.mypyPath': ${legacyPath}`);
-        return [legacyPath];
-    }
     return [];
 }
 
