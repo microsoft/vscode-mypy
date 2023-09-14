@@ -110,7 +110,10 @@
                     "default": true,
                     "markdownDescription": "%settings.preferDaemon.description%",
                     "scope": "resource",
-                    "type": "boolean"
+                    "type": "boolean",
+                    "tags": [
+                        "experimental"
+                    ]
                 },
                 "mypy-type-checker.reportingScope": {
                     "default": "file",

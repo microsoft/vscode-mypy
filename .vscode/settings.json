@@ -24,5 +24,6 @@
         "editor.formatOnSave": true,
         "editor.wordBasedSuggestions": false,
         "editor.defaultFormatter": "ms-python.black-formatter"
-    }
+    },
+    "editor.formatOnSave": true
 }
