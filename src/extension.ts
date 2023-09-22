@@ -19,6 +19,7 @@ import { registerLanguageStatusItem, updateStatus } from './common/status';
 import { PYTHON_VERSION } from './common/constants';
 
 let lsClient: LanguageClient | undefined;
+let watcher: vscode.FileSystemWatcher | undefined;
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     // This is required to get server name and module. This should be
     // the first thing that we do in this extension.
@@ -63,6 +64,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             lsClient = await restartServer(workspaceSetting, serverId, serverName, outputChannel, lsClient);
         }
     };
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+
+    if (workspaceFolder) {
+        const fullPath = `${workspaceFolder.uri.fsPath}/pyproject.toml`;
+        watcher = vscode.workspace.createFileSystemWatcher(fullPath);
+
+        watcher.onDidChange((uri) => {
+            console.log('pyproject.toml changed');
+            vscode.commands.executeCommand('mypy-type-checker.restart', uri.fsPath);
+        });
+    }
 
     context.subscriptions.push(
         onDidChangePythonInterpreter(async () => {
