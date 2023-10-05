@@ -2,7 +2,7 @@
     "name": "mypy-type-checker",
     "displayName": "Mypy Type Checker",
     "description": "%extension.description%",
-    "version": "2023.4.0",
+    "version": "2023.5.0-dev",
     "preview": true,
     "serverInfo": {
         "name": "Mypy",
