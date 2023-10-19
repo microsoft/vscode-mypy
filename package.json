@@ -74,6 +74,16 @@
                     "scope": "resource",
                     "type": "array"
                 },
+                "mypy-type-checker.cwd": {
+                    "default": "${workspaceFolder}",
+                    "description": "%settings.cwd.description%",
+                    "scope": "resource",
+                    "type": "string",
+                    "examples": [
+                        "${workspaceFolder}/src",
+                        "${fileDirname}"
+                    ]
+                },
                 "mypy-type-checker.path": {
                     "default": [],
                     "markdownDescription": "%settings.path.description%",
@@ -82,6 +92,22 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "mypy-type-checker.ignorePatterns": {
+                    "default": [],
+                    "description": "%settings.ignorePatterns.description%",
+                    "items": {
+                        "type": "string"
+                    },
+                    "scope": "resource",
+                    "type": "array",
+                    "uniqueItems": true,
+                    "examples": [
+                        [
+                            "**/site-packages/**/*.py",
+                            ".vscode/*.py"
+                        ]
+                    ]
                 },
                 "mypy-type-checker.importStrategy": {
                     "default": "useBundled",
@@ -96,6 +122,12 @@
                     ],
                     "scope": "window",
                     "type": "string"
+                },
+                "mypy-type-checker.includeStdLib": {
+                    "default": false,
+                    "description": "%settings.includeStdLib.description%",
+                    "scope": "resource",
+                    "type": "boolean"
                 },
                 "mypy-type-checker.interpreter": {
                     "default": [],

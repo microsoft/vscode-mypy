@@ -1,7 +1,8 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 """
 Test for path and interpreter settings.
 """
-import copy
 import sys
 from threading import Event
 from typing import Dict
@@ -36,8 +37,8 @@ class CallbackObject:
 def test_path():
     """Test linting using mypy bin path set."""
 
-    init_params = copy.deepcopy(defaults.VSCODE_DEFAULT_INITIALIZE)
-    init_params["initializationOptions"]["settings"][0]["path"] = [
+    default_init = defaults.vscode_initialize_defaults()
+    default_init["initializationOptions"]["settings"][0]["path"] = [
         sys.executable,
         "-m",
         "mypy",
@@ -60,7 +61,7 @@ def test_path():
 
         ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
 
-        ls_session.initialize(init_params)
+        ls_session.initialize(default_init)
         ls_session.notify_did_open(
             {
                 "textDocument": {
@@ -98,8 +99,8 @@ def test_path():
 
 def test_interpreter():
     """Test linting using specific python path."""
-    init_params = copy.deepcopy(defaults.VSCODE_DEFAULT_INITIALIZE)
-    init_params["initializationOptions"]["settings"][0]["interpreter"] = ["python"]
+    default_init = defaults.vscode_initialize_defaults()
+    default_init["initializationOptions"]["settings"][0]["interpreter"] = ["python"]
 
     argv_callback_object = CallbackObject()
     contents = TEST_FILE_PATH.read_text(encoding="utf-8")
@@ -118,7 +119,7 @@ def test_interpreter():
 
         ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
 
-        ls_session.initialize(init_params)
+        ls_session.initialize(default_init)
         ls_session.notify_did_open(
             {
                 "textDocument": {

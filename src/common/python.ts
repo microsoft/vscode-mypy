@@ -5,6 +5,7 @@
 import { commands, Disposable, Event, EventEmitter, Uri } from 'vscode';
 import { traceError, traceLog } from './logging';
 import { PythonExtension, ResolvedEnvironment } from '@vscode/python-extension';
+import { PYTHON_MAJOR, PYTHON_MINOR, PYTHON_VERSION } from './constants';
 
 export interface IInterpreterDetails {
     path?: string[];
@@ -70,11 +71,11 @@ export async function runPythonExtensionCommand(command: string, ...rest: any[])
 
 export function checkVersion(resolved: ResolvedEnvironment | undefined): boolean {
     const version = resolved?.version;
-    if (version?.major === 3 && version?.minor >= 8) {
+    if (version?.major === PYTHON_MAJOR && version?.minor >= PYTHON_MINOR) {
         return true;
     }
     traceError(`Python version ${version?.major}.${version?.minor} is not supported.`);
     traceError(`Selected python path: ${resolved?.executable.uri?.fsPath}`);
-    traceError('Supported versions are 3.8 and above.');
+    traceError(`Supported versions are ${PYTHON_VERSION} and above.`);
     return false;
 }

@@ -9,6 +9,7 @@ import os
 import pathlib
 import re
 import sys
+import sysconfig
 import tempfile
 import traceback
 import uuid
@@ -28,6 +29,26 @@ def update_sys_path(path_to_add: str, strategy: str) -> None:
             sys.path.append(path_to_add)
 
 
+# **********************************************************
+# Update PATH before running anything.
+# **********************************************************
+def update_environ_path() -> None:
+    """Update PATH environment variable with the 'scripts' directory.
+    Windows: .venv/Scripts
+    Linux/MacOS: .venv/bin
+    """
+    scripts = sysconfig.get_path("scripts")
+    paths_variants = ["Path", "PATH"]
+
+    for var_name in paths_variants:
+        if var_name in os.environ:
+            paths = os.environ[var_name].split(os.pathsep)
+            if scripts not in paths:
+                paths.insert(0, scripts)
+                os.environ[var_name] = os.pathsep.join(paths)
+                break
+
+
 # Ensure that we can import LSP libraries, and other bundled libraries.
 BUNDLE_DIR = pathlib.Path(__file__).parent.parent
 BUNDLED_LIBS = os.fspath(BUNDLE_DIR / "libs")
@@ -37,6 +58,7 @@ update_sys_path(
     BUNDLED_LIBS,
     os.getenv("LS_IMPORT_STRATEGY", "useBundled"),
 )
+update_environ_path()
 
 # **********************************************************
 # Imports needed for the language server goes below this.
@@ -90,6 +112,9 @@ MYPY_INFO_TABLE: Dict[str, MypyInfo] = {}
 
 def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
     try:
+        if len(MYPY_INFO_TABLE) == 1:
+            # If there is only one workspace, just return the first value.
+            return list(MYPY_INFO_TABLE.values())[0]
         code_workspace = settings["workspaceFS"]
         if code_workspace not in MYPY_INFO_TABLE:
             # This is text we get from running `mypy --version`
@@ -117,7 +142,7 @@ def _run_unidentified_tool(
 
     This is supposed to be called only in `get_mypy_info`.
     """
-    cwd = settings["cwd"]
+    cwd = get_cwd(settings, None)
 
     if settings["path"]:
         argv = settings["path"]
@@ -158,7 +183,7 @@ def did_close(params: lsp.DidCloseTextDocumentParams) -> None:
     settings = _get_settings_by_document(document)
     if settings["reportingScope"] == "file":
         # Publishing empty diagnostics to clear the entries for this file.
-        LSP_SERVER.publish_diagnostics(document.uri, [])
+        _clear_diagnostics(document)
 
 
 def _is_empty_diagnostics(
@@ -175,6 +200,10 @@ def _is_empty_diagnostics(
 _reported_file_paths = set()
 
 
+def _clear_diagnostics(document: workspace.Document) -> None:
+    LSP_SERVER.publish_diagnostics(document.uri, [])
+
+
 def _linting_helper(document: workspace.Document) -> None:
     global _reported_file_paths
     try:
@@ -182,6 +211,35 @@ def _linting_helper(document: workspace.Document) -> None:
 
         # deep copy here to prevent accidentally updating global settings.
         settings = copy.deepcopy(_get_settings_by_document(document))
+
+        if str(document.uri).startswith("vscode-notebook-cell"):
+            # We don't support running mypy on notebook cells.
+            log_warning(f"Skipping notebook cells [Not Supported]: {str(document.uri)}")
+            _clear_diagnostics(document)
+            return None
+
+        if (
+            not settings["includeStdLib"]
+            and settings["reportingScope"] == "file"
+            and utils.is_stdlib_file(document.path)
+        ):
+            log_warning(
+                f"Skipping standard library file (stdlib excluded): {document.path}"
+            )
+            log_warning(
+                "You can include stdlib files by setting `mypy-type-checker.includeStdLib` to true."
+            )
+            _clear_diagnostics(document)
+            return None
+
+        if settings["reportingScope"] == "file" and utils.is_match(
+            settings["ignorePatterns"], document.path
+        ):
+            log_warning(
+                f"Skipping file due to `mypy-type-checker.ignorePatterns` match: {document.path}"
+            )
+            _clear_diagnostics(document)
+            return None
 
         version = get_mypy_info(settings).version
         if (version.major, version.minor) >= (0, 991) and sys.version_info >= (3, 8):
@@ -210,7 +268,7 @@ def _linting_helper(document: workspace.Document) -> None:
                 if _is_empty_diagnostics(document.path, parse_results):
                     # Ensure that if nothing is returned for this document, at least
                     # an empty diagnostic is returned to clear any old errors out.
-                    LSP_SERVER.publish_diagnostics(document.uri, [])
+                    _clear_diagnostics(document)
 
             if reportingScope == "workspace":
                 for file_path in _reported_file_paths:
@@ -218,7 +276,7 @@ def _linting_helper(document: workspace.Document) -> None:
                         uri = uris.from_fs_path(file_path)
                         LSP_SERVER.publish_diagnostics(uri, [])
         else:
-            LSP_SERVER.publish_diagnostics(document.uri, [])
+            _clear_diagnostics(document)
     except Exception:
         LSP_SERVER.show_message_log(
             f"Linting failed with error:\r\n{traceback.format_exc()}",
@@ -447,10 +505,13 @@ def _get_global_defaults():
                 "note": "Information",
             },
         ),
+        "ignorePatterns": [],
         "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "useBundled"),
         "showNotifications": GLOBAL_SETTINGS.get("showNotifications", "off"),
         "extraPaths": GLOBAL_SETTINGS.get("extraPaths", []),
+        "includeStdLib": GLOBAL_SETTINGS.get("includeStdLib", False),
         "reportingScope": GLOBAL_SETTINGS.get("reportingScope", "file"),
+        "preferDaemon": GLOBAL_SETTINGS.get("preferDaemon", True),
     }
 
 
@@ -590,27 +651,35 @@ def _get_env_vars(settings: Dict[str, Any]) -> Dict[str, str]:
     return new_env
 
 
+def get_cwd(settings: Dict[str, Any], document: Optional[workspace.Document]) -> str:
+    """Returns cwd for the given settings and document."""
+    if settings["cwd"] == "${workspaceFolder}":
+        return settings["workspaceFS"]
+
+    if settings["cwd"] == "${fileDirname}":
+        if document is not None:
+            return os.fspath(pathlib.Path(document.path).parent)
+        return settings["workspaceFS"]
+
+    return settings["cwd"]
+
+
 def _run_tool_on_document(
     document: workspace.Document,
-    extra_args: Sequence[str] = [],
+    extra_args: Sequence[str] = None,
 ) -> utils.RunResult | None:
     """Runs tool on the given document.
 
     if use_stdin is true then contents of the document is passed to the
     tool via stdin.
     """
-    if str(document.uri).startswith("vscode-notebook-cell"):
-        # We don't support running mypy on notebook cells.
-        log_to_output("Skipping mypy on notebook cells.")
-        return None
-
-    if utils.is_stdlib_file(document.path):
-        log_to_output("Skipping mypy on stdlib file: " + document.path)
-        return None
+    if extra_args is None:
+        extra_args = []
 
     # deep copy here to prevent accidentally updating global settings.
     settings = copy.deepcopy(_get_settings_by_document(document))
-    cwd = settings["cwd"]
+
+    cwd = get_cwd(settings, document)
 
     if settings["path"]:
         argv = settings["path"]
@@ -646,7 +715,7 @@ def _run_dmypy_command(
         log_error(f"dmypy command called in non-daemon context: {command}")
         raise ValueError(f"dmypy command called in non-daemon context: {command}")
 
-    cwd = settings["cwd"]
+    cwd = get_cwd(settings, None)
 
     if settings["path"]:
         argv = settings["path"]

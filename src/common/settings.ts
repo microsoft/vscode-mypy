@@ -2,9 +2,9 @@
 // Licensed under the MIT License.
 
 import { ConfigurationChangeEvent, ConfigurationScope, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
+import { traceLog, traceWarn } from './logging';
 import { getInterpreterDetails } from './python';
 import { getConfiguration, getWorkspaceFolders } from './vscodeapi';
-import { traceLog } from './logging';
 
 const DEFAULT_SEVERITY: Record<string, string> = {
     error: 'Error',
@@ -17,9 +17,11 @@ export interface ISettings {
     args: string[];
     severity: Record<string, string>;
     path: string[];
+    ignorePatterns: string[];
     interpreter: string[];
     importStrategy: string;
     showNotifications: string;
+    includeStdLib: boolean;
     extraPaths: string[];
     reportingScope: string;
     preferDaemon: boolean;
@@ -29,7 +31,12 @@ export function getExtensionSettings(namespace: string, includeInterpreter?: boo
     return Promise.all(getWorkspaceFolders().map((w) => getWorkspaceSettings(namespace, w, includeInterpreter)));
 }
 
-function resolveVariables(value: string[], workspace?: WorkspaceFolder): string[] {
+function resolveVariables(
+    value: string[],
+    workspace?: WorkspaceFolder,
+    interpreter?: string[],
+    env?: NodeJS.ProcessEnv,
+): string[] {
     const substitutions = new Map<string, string>();
     const home = process.env.HOME || process.env.USERPROFILE;
     if (home) {
@@ -43,7 +50,25 @@ function resolveVariables(value: string[], workspace?: WorkspaceFolder): string[
         substitutions.set('${workspaceFolder:' + w.name + '}', w.uri.fsPath);
     });
 
-    return value.map((s) => {
+    env = env || process.env;
+    if (env) {
+        for (const [key, value] of Object.entries(env)) {
+            if (value) {
+                substitutions.set('${env:' + key + '}', value);
+            }
+        }
+    }
+
+    const modifiedValue = [];
+    for (const v of value) {
+        if (interpreter && v === '${interpreter}') {
+            modifiedValue.push(...interpreter);
+        } else {
+            modifiedValue.push(v);
+        }
+    }
+
+    return modifiedValue.map((s) => {
         for (const [key, value] of substitutions) {
             s = s.replace(key, value);
         }
@@ -51,36 +76,12 @@ function resolveVariables(value: string[], workspace?: WorkspaceFolder): string[
     });
 }
 
-function getArgs(namespace: string, workspace: WorkspaceFolder): string[] {
-    const config = getConfiguration(namespace, workspace.uri);
-    const args = config.get<string[]>('args', []);
-    return args;
+function getCwd(config: WorkspaceConfiguration, workspace: WorkspaceFolder): string {
+    const cwd = config.get<string>('cwd', workspace.uri.fsPath);
+    return resolveVariables([cwd], workspace)[0];
 }
 
-function getPath(namespace: string, workspace: WorkspaceFolder): string[] {
-    const config = getConfiguration(namespace, workspace.uri);
-    const path = config.get<string[]>('path', []);
-
-    if (path.length > 0) {
-        return path;
-    }
-
-    return [];
-}
-
-function getCwd(namespace: string, workspace: WorkspaceFolder): string {
-    const legacyConfig = getConfiguration('python', workspace.uri);
-    const legacyCwd = legacyConfig.get<string>('linting.cwd');
-
-    if (legacyCwd) {
-        traceLog('Using cwd from `python.linting.cwd`.');
-        return resolveVariables([legacyCwd], workspace)[0];
-    }
-
-    return workspace.uri.fsPath;
-}
-
-function getExtraPaths(namespace: string, workspace: WorkspaceFolder): string[] {
+function getExtraPaths(_namespace: string, workspace: WorkspaceFolder): string[] {
     const legacyConfig = getConfiguration('python', workspace.uri);
     const legacyExtraPaths = legacyConfig.get<string[]>('analysis.extraPaths', []);
 
@@ -100,43 +101,29 @@ export async function getWorkspaceSettings(
     workspace: WorkspaceFolder,
     includeInterpreter?: boolean,
 ): Promise<ISettings> {
-    const config = getConfiguration(namespace, workspace.uri);
+    const config = getConfiguration(namespace, workspace);
 
     let interpreter: string[] = [];
     if (includeInterpreter) {
         interpreter = getInterpreterFromSetting(namespace, workspace) ?? [];
         if (interpreter.length === 0) {
-            traceLog(`No interpreter found from setting ${namespace}.interpreter`);
-            traceLog(`Getting interpreter from ms-python.python extension for workspace ${workspace.uri.fsPath}`);
             interpreter = (await getInterpreterDetails(workspace.uri)).path ?? [];
-            if (interpreter.length > 0) {
-                traceLog(
-                    `Interpreter from ms-python.python extension for ${workspace.uri.fsPath}:`,
-                    `${interpreter.join(' ')}`,
-                );
-            }
-        } else {
-            traceLog(`Interpreter from setting ${namespace}.interpreter: ${interpreter.join(' ')}`);
-        }
-
-        if (interpreter.length === 0) {
-            traceLog(`No interpreter found for ${workspace.uri.fsPath} in settings or from ms-python.python extension`);
         }
     }
 
-    const args = getArgs(namespace, workspace);
-    const mypyPath = getPath(namespace, workspace);
     const extraPaths = getExtraPaths(namespace, workspace);
     const workspaceSetting = {
-        cwd: getCwd(namespace, workspace),
+        cwd: getCwd(config, workspace),
         workspace: workspace.uri.toString(),
-        args: resolveVariables(args, workspace),
+        args: resolveVariables(config.get<string[]>('args', []), workspace),
         severity: config.get<Record<string, string>>('severity', DEFAULT_SEVERITY),
-        path: resolveVariables(mypyPath, workspace),
+        path: resolveVariables(config.get<string[]>('path', []), workspace, interpreter),
+        ignorePatterns: resolveVariables(config.get<string[]>('ignorePatterns', []), workspace),
         interpreter: resolveVariables(interpreter, workspace),
         importStrategy: config.get<string>('importStrategy', 'useBundled'),
         showNotifications: config.get<string>('showNotifications', 'off'),
         extraPaths: resolveVariables(extraPaths, workspace),
+        includeStdLib: config.get<boolean>('includeStdLib', false),
         reportingScope: config.get<string>('reportingScope', 'file'),
         preferDaemon: config.get<boolean>('preferDaemon', true),
     };
@@ -160,15 +147,17 @@ export async function getGlobalSettings(namespace: string, includeInterpreter?: 
     }
 
     const setting = {
-        cwd: process.cwd(),
+        cwd: getGlobalValue<string>(config, 'cwd', process.cwd()),
         workspace: process.cwd(),
         args: getGlobalValue<string[]>(config, 'args', []),
         severity: getGlobalValue<Record<string, string>>(config, 'severity', DEFAULT_SEVERITY),
         path: getGlobalValue<string[]>(config, 'path', []),
+        ignorePatterns: getGlobalValue<string[]>(config, 'ignorePatterns', []),
         interpreter: interpreter ?? [],
         importStrategy: getGlobalValue<string>(config, 'importStrategy', 'useBundled'),
         showNotifications: getGlobalValue<string>(config, 'showNotifications', 'off'),
         extraPaths: getGlobalValue<string[]>(config, 'extraPaths', []),
+        includeStdLib: config.get<boolean>('includeStdLib', false),
         reportingScope: config.get<string>('reportingScope', 'file'),
         preferDaemon: config.get<boolean>('preferDaemon', true),
     };
@@ -178,13 +167,60 @@ export async function getGlobalSettings(namespace: string, includeInterpreter?: 
 export function checkIfConfigurationChanged(e: ConfigurationChangeEvent, namespace: string): boolean {
     const settings = [
         `${namespace}.args`,
+        `${namespace}.cwd`,
         `${namespace}.severity`,
         `${namespace}.path`,
         `${namespace}.interpreter`,
         `${namespace}.importStrategy`,
         `${namespace}.showNotifications`,
         `${namespace}.reportingScope`,
+        `${namespace}.preferDaemon`,
+        `${namespace}.ignorePatterns`,
+        `${namespace}.includeStdLib`,
+        'python.analysis.extraPaths',
     ];
     const changed = settings.map((s) => e.affectsConfiguration(s));
     return changed.includes(true);
+}
+
+export function logLegacySettings(namespace: string): void {
+    getWorkspaceFolders().forEach((workspace) => {
+        try {
+            const legacyConfig = getConfiguration('python', workspace.uri);
+
+            const legacyMypyEnabled = legacyConfig.get<boolean>('linting.mypyEnabled', false);
+            if (legacyMypyEnabled) {
+                traceWarn(`"python.linting.mypyEnabled" is deprecated. You can remove that setting.`);
+                traceWarn(
+                    'The mypy extension is always enabled. However, you can disable it per workspace using the extensions view.',
+                );
+                traceWarn('You can exclude files and folders using the `python.linting.ignorePatterns` setting.');
+                traceWarn(
+                    `"python.linting.mypyEnabled" value for workspace ${workspace.uri.fsPath}: ${legacyMypyEnabled}`,
+                );
+            }
+
+            const legacyCwd = legacyConfig.get<string>('linting.cwd');
+            if (legacyCwd) {
+                traceWarn(`"python.linting.cwd" is deprecated. Use "${namespace}.cwd" instead.`);
+                traceWarn(`"python.linting.cwd" value for workspace ${workspace.uri.fsPath}: ${legacyCwd}`);
+            }
+
+            const legacyArgs = legacyConfig.get<string[]>('linting.mypyArgs', []);
+            if (legacyArgs.length > 0) {
+                traceWarn(`"python.linting.mypyArgs" is deprecated. Use "${namespace}.args" instead.`);
+                traceWarn(`"python.linting.mypyArgs" value for workspace ${workspace.uri.fsPath}:`);
+                traceWarn(`\n${JSON.stringify(legacyArgs, null, 4)}`);
+            }
+
+            const legacyPath = legacyConfig.get<string>('linting.mypyPath', '');
+            if (legacyPath.length > 0 && legacyPath !== 'mypy') {
+                traceWarn(`"python.linting.mypyPath" is deprecated. Use "${namespace}.path" instead.`);
+                traceWarn(`"python.linting.mypyPath" value for workspace ${workspace.uri.fsPath}:`);
+                traceWarn(`\n${JSON.stringify(legacyPath, null, 4)}`);
+            }
+        } catch (err) {
+            traceWarn(`Error while logging legacy settings: ${err}`);
+        }
+    });
 }

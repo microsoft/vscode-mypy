@@ -2,8 +2,10 @@
     "extension.description": "Linting support for Python files using `mypy`.",
     "command.restartServer": "Restart Server",
     "settings.args.description": "Arguments passed in. Each argument is a separate string in the array.",
+    "settings.cwd.description": "The current working directory used to run `mypy`. To use the directory of the file currently being linted, you can use `${fileDirname}` .",
     "settings.severity.description": "Mapping from severity of `mypy` message type to severity shown in problem window.",
     "settings.path.description": "When set to a path to `mypy` binary, extension will use that for linting. NOTE: Using this option may slowdown linting.",
+    "settings.ignorePatterns.description": "Patterns used to exclude files or folders from being linted. Applies to `reportingScope==file` only.",
     "settings.importStrategy.description": "Defines where `mypy` is imported from. This setting may be ignored if `mypy-type-checker.path` is set.",
     "settings.importStrategy.useBundled.description": "Always use the bundled version of `mypy`.",
     "settings.importStrategy.fromEnvironment.description": "Use `mypy` from environment, fallback to bundled version only if `mypy` not available in the environment.",
@@ -16,5 +18,6 @@
     "settings.showNotifications.off.description": "All notifications are turned off, any errors or warning are still available in the logs.",
     "settings.showNotifications.onError.description": "Notifications are shown only in the case of an error.",
     "settings.showNotifications.onWarning.description": "Notifications are shown for errors and warnings.",
-    "settings.showNotifications.always.description": "Notifications are show for anything that the server chooses to show."
+    "settings.showNotifications.always.description": "Notifications are show for anything that the server chooses to show.",
+    "settings.includeStdLib.description": "Controls whether to filter out files from standard library from being linted. Applies to `reportingScope==file` only."
 }
