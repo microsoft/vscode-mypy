@@ -3,14 +3,20 @@
 
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
-import { restartServer } from './common/server';
 import { registerLogger, traceError, traceLog, traceVerbose } from './common/logging';
 import { initializePython, onDidChangePythonInterpreter } from './common/python';
-import { checkIfConfigurationChanged, getInterpreterFromSetting, getWorkspaceSettings } from './common/settings';
+import { restartServer } from './common/server';
+import {
+    checkIfConfigurationChanged,
+    getInterpreterFromSetting,
+    getWorkspaceSettings,
+    logLegacySettings,
+} from './common/settings';
 import { loadServerDefaults } from './common/setup';
-import { getProjectRoot } from './common/utilities';
+import { getLSClientTraceLevel, getProjectRoot } from './common/utilities';
 import { createOutputChannel, onDidChangeConfiguration, registerCommand } from './common/vscodeapi';
 import { registerLanguageStatusItem, updateStatus } from './common/status';
+import { PYTHON_VERSION } from './common/constants';
 
 let lsClient: LanguageClient | undefined;
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -23,6 +29,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Setup logging
     const outputChannel = createOutputChannel(serverName);
     context.subscriptions.push(outputChannel, registerLogger(outputChannel));
+
+    const changeLogLevel = async (c: vscode.LogLevel, g: vscode.LogLevel) => {
+        const level = getLSClientTraceLevel(c, g);
+        await lsClient?.setTrace(level);
+    };
+
+    context.subscriptions.push(
+        outputChannel.onDidChangeLogLevel(async (e) => {
+            await changeLogLevel(e, vscode.env.logLevel);
+        }),
+        vscode.env.onDidChangeLogLevel(async (e) => {
+            await changeLogLevel(outputChannel.logLevel, e);
+        }),
+    );
 
     traceLog(`Name: ${serverName}`);
     traceLog(`Module: ${serverInfo.module}`);
@@ -37,7 +57,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 'Python interpreter missing:\r\n' +
                     '[Option 1] Select python interpreter using the ms-python.python.\r\n' +
                     `[Option 2] Set an interpreter using "${serverId}.interpreter" setting.\r\n`,
-                'Please use Python 3.8 or greater.',
+                `Please use Python ${PYTHON_VERSION} or greater.`,
             );
         } else {
             lsClient = await restartServer(workspaceSetting, serverId, serverName, outputChannel, lsClient);
@@ -61,6 +81,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }),
         registerLanguageStatusItem(serverId, serverName, `${serverId}.showLogs`),
     );
+
+    // This is needed to inform users that they might have some legacy settings that
+    // are no longer supported. Instructions are printed in the output channel on how
+    // to update them.
+    logLegacySettings(serverId);
 
     setImmediate(async () => {
         const interpreter = getInterpreterFromSetting(serverId);

@@ -3,10 +3,8 @@
 """
 Test for linting over LSP.
 """
-
-import copy
-import sys
 from threading import Event
+from typing import List
 
 import pytest
 from hamcrest import assert_that, greater_than, is_
@@ -62,7 +60,7 @@ def test_publish_diagnostics_on_open():
                     "start": {"line": 2, "character": 6},
                     "end": {
                         "line": 2,
-                        "character": 7 if sys.version_info >= (3, 8) else 6,
+                        "character": 7,
                     },
                 },
                 "message": 'Name "x" is not defined',
@@ -78,7 +76,7 @@ def test_publish_diagnostics_on_open():
                     "start": {"line": 6, "character": 21},
                     "end": {
                         "line": 6,
-                        "character": 33 if sys.version_info >= (3, 8) else 21,
+                        "character": 33,
                     },
                 },
                 "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
@@ -94,7 +92,7 @@ def test_publish_diagnostics_on_open():
                     "start": {"line": 6, "character": 21},
                     "end": {
                         "line": 6,
-                        "character": 33 if sys.version_info >= (3, 8) else 21,
+                        "character": 33,
                     },
                 },
                 "message": """This violates the Liskov substitution principle
@@ -160,7 +158,7 @@ def test_publish_diagnostics_on_save():
                     "start": {"line": 2, "character": 6},
                     "end": {
                         "line": 2,
-                        "character": 7 if sys.version_info >= (3, 8) else 6,
+                        "character": 7,
                     },
                 },
                 "message": 'Name "x" is not defined',
@@ -176,7 +174,7 @@ def test_publish_diagnostics_on_save():
                     "start": {"line": 6, "character": 21},
                     "end": {
                         "line": 6,
-                        "character": 33 if sys.version_info >= (3, 8) else 21,
+                        "character": 33,
                     },
                 },
                 "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
@@ -192,7 +190,7 @@ def test_publish_diagnostics_on_save():
                     "start": {"line": 6, "character": 21},
                     "end": {
                         "line": 6,
-                        "character": 33 if sys.version_info >= (3, 8) else 21,
+                        "character": 33,
                     },
                 },
                 "message": """This violates the Liskov substitution principle
@@ -284,10 +282,10 @@ def test_severity_setting(lint_code):
 
     actual = []
     with session.LspSession() as ls_session:
-        init_args = copy.deepcopy(defaults.VSCODE_DEFAULT_INITIALIZE)
-        init_options = init_args["initializationOptions"]
+        default_init = defaults.vscode_initialize_defaults()
+        init_options = default_init["initializationOptions"]
         init_options["settings"][0]["severity"][lint_code] = "Warning"
-        ls_session.initialize(init_args)
+        ls_session.initialize(default_init)
 
         done = Event()
 
@@ -324,7 +322,7 @@ def test_severity_setting(lint_code):
                     "start": {"line": 2, "character": 6},
                     "end": {
                         "line": 2,
-                        "character": 7 if sys.version_info >= (3, 8) else 6,
+                        "character": 7,
                     },
                 },
                 "message": 'Name "x" is not defined',
@@ -340,7 +338,7 @@ def test_severity_setting(lint_code):
                     "start": {"line": 6, "character": 21},
                     "end": {
                         "line": 6,
-                        "character": 33 if sys.version_info >= (3, 8) else 21,
+                        "character": 33,
                     },
                 },
                 "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
@@ -356,7 +354,7 @@ def test_severity_setting(lint_code):
                     "start": {"line": 6, "character": 21},
                     "end": {
                         "line": 6,
-                        "character": 33 if sys.version_info >= (3, 8) else 21,
+                        "character": 33,
                     },
                 },
                 "message": """This violates the Liskov substitution principle
@@ -387,10 +385,19 @@ def test_workspace_reporting_scope():
 
     actual = []
     with session.LspSession() as ls_session:
-        init_args = copy.deepcopy(defaults.VSCODE_DEFAULT_INITIALIZE)
-        init_options = init_args["initializationOptions"]
+        default_init = defaults.vscode_initialize_defaults()
+        default_init["rootPath"] = str(constants.TEST_DATA)
+        default_init["rootUri"]: utils.as_uri(str(constants.TEST_DATA))
+        default_init["workspaceFolders"][0]["uri"] = utils.as_uri(
+            str(constants.TEST_DATA)
+        )
+        init_options = default_init["initializationOptions"]
         init_options["settings"][0]["reportingScope"] = "workspace"
-        ls_session.initialize(init_args)
+        init_options["settings"][0]["workspace"] = utils.as_uri(
+            str(constants.TEST_DATA)
+        )
+        init_options["settings"][0]["cwd"] = str(constants.TEST_DATA)
+        ls_session.initialize(default_init)
 
         done = Event()
 
@@ -429,7 +436,7 @@ def test_workspace_reporting_scope():
                             "start": {"line": 2, "character": 6},
                             "end": {
                                 "line": 2,
-                                "character": 7 if sys.version_info >= (3, 8) else 6,
+                                "character": 7,
                             },
                         },
                         "message": 'Name "x" is not defined',
@@ -445,7 +452,7 @@ def test_workspace_reporting_scope():
                             "start": {"line": 6, "character": 21},
                             "end": {
                                 "line": 6,
-                                "character": 33 if sys.version_info >= (3, 8) else 21,
+                                "character": 33,
                             },
                         },
                         "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
@@ -461,7 +468,7 @@ def test_workspace_reporting_scope():
                             "start": {"line": 6, "character": 21},
                             "end": {
                                 "line": 6,
-                                "character": 33 if sys.version_info >= (3, 8) else 21,
+                                "character": 33,
                             },
                         },
                         "message": """This violates the Liskov substitution principle
@@ -488,7 +495,7 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
                             "start": {"line": 2, "character": 9},
                             "end": {
                                 "line": 2,
-                                "character": 16 if sys.version_info >= (3, 8) else 9,
+                                "character": 16,
                             },
                         },
                         "message": 'Incompatible types in assignment (expression has type "str", variable has type "int")',
@@ -559,10 +566,19 @@ def test_file_with_no_errors_generates_empty_diagnostics_workspace_mode():
 
     actual = []
     with session.LspSession() as ls_session:
-        init_args = copy.deepcopy(defaults.VSCODE_DEFAULT_INITIALIZE)
-        init_options = init_args["initializationOptions"]
+        default_init = defaults.vscode_initialize_defaults()
+        default_init["rootPath"] = str(constants.TEST_DATA)
+        default_init["rootUri"]: utils.as_uri(str(constants.TEST_DATA))
+        default_init["workspaceFolders"][0]["uri"] = utils.as_uri(
+            str(constants.TEST_DATA)
+        )
+        init_options = default_init["initializationOptions"]
         init_options["settings"][0]["reportingScope"] = "workspace"
-        ls_session.initialize(init_args)
+        init_options["settings"][0]["workspace"] = utils.as_uri(
+            str(constants.TEST_DATA)
+        )
+        init_options["settings"][0]["cwd"] = str(constants.TEST_DATA)
+        ls_session.initialize(default_init)
 
         done = Event()
 
@@ -601,7 +617,7 @@ def test_file_with_no_errors_generates_empty_diagnostics_workspace_mode():
                             "start": {"line": 2, "character": 6},
                             "end": {
                                 "line": 2,
-                                "character": 7 if sys.version_info >= (3, 8) else 6,
+                                "character": 7,
                             },
                         },
                         "message": 'Name "x" is not defined',
@@ -617,7 +633,7 @@ def test_file_with_no_errors_generates_empty_diagnostics_workspace_mode():
                             "start": {"line": 6, "character": 21},
                             "end": {
                                 "line": 6,
-                                "character": 33 if sys.version_info >= (3, 8) else 21,
+                                "character": 33,
                             },
                         },
                         "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
@@ -633,7 +649,7 @@ def test_file_with_no_errors_generates_empty_diagnostics_workspace_mode():
                             "start": {"line": 6, "character": 21},
                             "end": {
                                 "line": 6,
-                                "character": 33 if sys.version_info >= (3, 8) else 21,
+                                "character": 33,
                             },
                         },
                         "message": """This violates the Liskov substitution principle
@@ -660,7 +676,7 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
                             "start": {"line": 2, "character": 9},
                             "end": {
                                 "line": 2,
-                                "character": 16 if sys.version_info >= (3, 8) else 9,
+                                "character": 16,
                             },
                         },
                         "message": 'Incompatible types in assignment (expression has type "str", variable has type "int")',
@@ -677,3 +693,158 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
 
         # Only reports diagnostics on files that have problems
         assert_that(actual, is_(expected))
+
+
+@pytest.mark.parametrize(
+    "patterns",
+    [
+        ["**/sample*.py"],
+        ["**/test_data/**/*.py"],
+        ["**/sample*.py", "**/something*.py"],
+    ],
+)
+def test_ignore_patterns_match(patterns: List[str]):
+    """Test to ensure linter uses the ignore pattern."""
+    contents = TEST_FILE_PATH.read_text(encoding="utf-8")
+
+    actual = []
+    with session.LspSession() as ls_session:
+        default_init = defaults.vscode_initialize_defaults()
+        init_options = default_init["initializationOptions"]
+        init_options["settings"][0]["ignorePatterns"] = patterns
+        ls_session.initialize(default_init)
+
+        done = Event()
+
+        def _handler(params):
+            nonlocal actual
+            actual = params
+            done.set()
+
+        ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
+
+        ls_session.notify_did_open(
+            {
+                "textDocument": {
+                    "uri": TEST_FILE_URI,
+                    "languageId": "python",
+                    "version": 1,
+                    "text": contents,
+                }
+            }
+        )
+
+        # wait for some time to receive all notifications
+        done.wait(TIMEOUT)
+
+    expected = {
+        "uri": TEST_FILE_URI,
+        "diagnostics": [],
+    }
+
+    assert_that(actual, is_(expected))
+
+
+@pytest.mark.parametrize(
+    "patterns",
+    [
+        ["**/something*.py"],
+        ["**/something/**/*.py"],
+        [],
+    ],
+)
+def test_ignore_patterns_no_match(patterns: List[str]):
+    """Test to ensure linter uses the ignore pattern."""
+    contents = TEST_FILE_PATH.read_text(encoding="utf-8")
+
+    actual = []
+    with session.LspSession() as ls_session:
+        default_init = defaults.vscode_initialize_defaults()
+        init_options = default_init["initializationOptions"]
+        init_options["settings"][0]["ignorePatterns"] = patterns
+        ls_session.initialize(default_init)
+
+        done = Event()
+
+        def _handler(params):
+            nonlocal actual
+            actual = params
+            done.set()
+
+        ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
+
+        ls_session.notify_did_open(
+            {
+                "textDocument": {
+                    "uri": TEST_FILE_URI,
+                    "languageId": "python",
+                    "version": 1,
+                    "text": contents,
+                }
+            }
+        )
+
+        # wait for some time to receive all notifications
+        done.wait(TIMEOUT)
+
+    expected = {
+        "uri": TEST_FILE_URI,
+        "diagnostics": [
+            {
+                "range": {
+                    "start": {"line": 2, "character": 6},
+                    "end": {
+                        "line": 2,
+                        "character": 7,
+                    },
+                },
+                "message": 'Name "x" is not defined',
+                "severity": 1,
+                "code": "name-defined",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-name-defined"
+                },
+                "source": "Mypy",
+            },
+            {
+                "range": {
+                    "start": {"line": 6, "character": 21},
+                    "end": {
+                        "line": 6,
+                        "character": 33,
+                    },
+                },
+                "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                "severity": 1,
+                "code": "override",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-override"
+                },
+                "source": "Mypy",
+            },
+            {
+                "range": {
+                    "start": {"line": 6, "character": 21},
+                    "end": {
+                        "line": 6,
+                        "character": 33,
+                    },
+                },
+                "message": """This violates the Liskov substitution principle
+See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+It is recommended for "__eq__" to work with arbitrary objects, for example:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Foo):
+            return NotImplemented
+        return <logic to compare two Foo instances>""",
+                "severity": 3,
+                "code": "note",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides"
+                },
+                "source": "Mypy",
+            },
+        ],
+    }
+
+    assert_that(actual, is_(expected))

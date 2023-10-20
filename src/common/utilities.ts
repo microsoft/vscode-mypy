@@ -68,6 +68,7 @@ export async function getProjectRoot(): Promise<WorkspaceFolder> {
 }
 
 export function getDocumentSelector(): DocumentSelector {
+    // virtual workspaces are not supported yet
     return isVirtualWorkspace()
         ? [{ language: 'python' }]
         : [

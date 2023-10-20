@@ -1,4 +1,6 @@
-import copy
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+"""Tests for non-daemon mode"""
 from threading import Event
 from typing import Any, Dict, List
 
@@ -25,15 +27,15 @@ def test_daemon_non_daemon_equivalence_for_file_with_errors():
     contents = TEST_FILE1_PATH.read_text(encoding="utf-8")
 
     def run(prefer_daemon: bool):
-        init_params = copy.deepcopy(defaults.VSCODE_DEFAULT_INITIALIZE)
-        init_params["initializationOptions"]["settings"][0][
+        default_init = defaults.vscode_initialize_defaults()
+        default_init["initializationOptions"]["settings"][0][
             "preferDaemon"
         ] = prefer_daemon
 
         result: Dict[str, Any] = {}
         log_messages: List[str] = []
         with session.LspSession() as ls_session:
-            ls_session.initialize(init_params)
+            ls_session.initialize(default_init)
 
             done = Event()
 

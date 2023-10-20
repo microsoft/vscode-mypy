@@ -71,6 +71,14 @@ suite('Settings Tests', () => {
                 .setup((c) => c.get('showNotifications', 'off'))
                 .returns(() => 'off')
                 .verifiable(TypeMoq.Times.atLeastOnce());
+            configMock
+                .setup((c) => c.get('cwd', workspace1.uri.fsPath))
+                .returns(() => workspace1.uri.fsPath)
+                .verifiable(TypeMoq.Times.atLeastOnce());
+            configMock
+                .setup((c) => c.get('ignorePatterns', []))
+                .returns(() => [])
+                .verifiable(TypeMoq.Times.atLeastOnce());
 
             pythonConfigMock
                 .setup((c) => c.get('linting.mypyArgs', []))
@@ -96,6 +104,7 @@ suite('Settings Tests', () => {
             assert.deepStrictEqual(settings.showNotifications, 'off');
             assert.deepStrictEqual(settings.workspace, workspace1.uri.toString());
             assert.deepStrictEqual(settings.extraPaths, []);
+            assert.deepStrictEqual(settings.ignorePatterns, []);
 
             configMock.verifyAll();
             pythonConfigMock.verifyAll();
@@ -113,6 +122,7 @@ suite('Settings Tests', () => {
                     '${workspaceFolder}/bin/mypy',
                     '${workspaceFolder:workspace1}/bin/mypy',
                     '${cwd}/bin/mypy',
+                    '${interpreter}',
                 ])
                 .verifiable(TypeMoq.Times.atLeastOnce());
             configMock
@@ -136,6 +146,14 @@ suite('Settings Tests', () => {
                 .setup((c) => c.get('showNotifications', 'off'))
                 .returns(() => 'off')
                 .verifiable(TypeMoq.Times.atLeastOnce());
+            configMock
+                .setup((c) => c.get('cwd', TypeMoq.It.isAnyString()))
+                .returns(() => '${fileDirname}')
+                .verifiable(TypeMoq.Times.atLeastOnce());
+            configMock
+                .setup((c) => c.get('ignorePatterns', []))
+                .returns(() => [])
+                .verifiable(TypeMoq.Times.atLeastOnce());
 
             pythonConfigMock
                 .setup((c) => c.get('linting.mypyArgs', []))
@@ -157,9 +175,11 @@ suite('Settings Tests', () => {
             pythonConfigMock
                 .setup((c) => c.get('linting.cwd'))
                 .returns(() => '${userHome}/bin')
-                .verifiable(TypeMoq.Times.atLeastOnce());
+                .verifiable(TypeMoq.Times.never());
 
             const settings: ISettings = await getWorkspaceSettings('mypy', workspace1, true);
+
+            assert.deepStrictEqual(settings.cwd, '${fileDirname}');
             assert.deepStrictEqual(settings.args, [
                 process.env.HOME || process.env.USERPROFILE,
                 workspace1.uri.fsPath,
@@ -171,6 +191,10 @@ suite('Settings Tests', () => {
                 `${workspace1.uri.fsPath}/bin/mypy`,
                 `${workspace1.uri.fsPath}/bin/mypy`,
                 `${process.cwd()}/bin/mypy`,
+                `${process.env.HOME || process.env.USERPROFILE}/bin/python`,
+                `${workspace1.uri.fsPath}/bin/python`,
+                `${workspace1.uri.fsPath}/bin/python`,
+                `${process.cwd()}/bin/python`,
             ]);
             assert.deepStrictEqual(settings.interpreter, [
                 `${process.env.HOME || process.env.USERPROFILE}/bin/python`,
@@ -184,7 +208,6 @@ suite('Settings Tests', () => {
                 `${workspace1.uri.fsPath}/lib/python`,
                 `${process.cwd()}/lib/python`,
             ]);
-            assert.deepStrictEqual(settings.cwd, `${process.env.HOME || process.env.USERPROFILE}/bin`);
 
             configMock.verifyAll();
             pythonConfigMock.verifyAll();
@@ -211,6 +234,14 @@ suite('Settings Tests', () => {
                 .setup((c) => c.get('showNotifications', 'off'))
                 .returns(() => 'off')
                 .verifiable(TypeMoq.Times.atLeastOnce());
+            configMock
+                .setup((c) => c.get('cwd', workspace1.uri.fsPath))
+                .returns(() => '${userHome}/bin')
+                .verifiable(TypeMoq.Times.atLeastOnce());
+            configMock
+                .setup((c) => c.get('ignorePatterns', []))
+                .returns(() => [])
+                .verifiable(TypeMoq.Times.atLeastOnce());
 
             pythonConfigMock
                 .setup((c) => c.get<string[]>('linting.mypyArgs', []))
@@ -232,7 +263,7 @@ suite('Settings Tests', () => {
             pythonConfigMock
                 .setup((c) => c.get('linting.cwd'))
                 .returns(() => '${userHome}/bin')
-                .verifiable(TypeMoq.Times.atLeastOnce());
+                .verifiable(TypeMoq.Times.never());
 
             const settings: ISettings = await getWorkspaceSettings('mypy', workspace1);
 
