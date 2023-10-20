@@ -112,9 +112,6 @@ MYPY_INFO_TABLE: Dict[str, MypyInfo] = {}
 
 def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
     try:
-        if len(MYPY_INFO_TABLE) == 1:
-            # If there is only one workspace, just return the first value.
-            return list(MYPY_INFO_TABLE.values())[0]
         code_workspace = settings["workspaceFS"]
         if code_workspace not in MYPY_INFO_TABLE:
             # This is text we get from running `mypy --version`
@@ -218,16 +215,9 @@ def _linting_helper(document: workspace.Document) -> None:
             _clear_diagnostics(document)
             return None
 
-        if (
-            not settings["includeStdLib"]
-            and settings["reportingScope"] == "file"
-            and utils.is_stdlib_file(document.path)
-        ):
+        if settings["reportingScope"] == "file" and utils.is_stdlib_file(document.path):
             log_warning(
                 f"Skipping standard library file (stdlib excluded): {document.path}"
-            )
-            log_warning(
-                "You can include stdlib files by setting `mypy-type-checker.includeStdLib` to true."
             )
             _clear_diagnostics(document)
             return None
@@ -509,7 +499,6 @@ def _get_global_defaults():
         "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "useBundled"),
         "showNotifications": GLOBAL_SETTINGS.get("showNotifications", "off"),
         "extraPaths": GLOBAL_SETTINGS.get("extraPaths", []),
-        "includeStdLib": GLOBAL_SETTINGS.get("includeStdLib", False),
         "reportingScope": GLOBAL_SETTINGS.get("reportingScope", "file"),
         "preferDaemon": GLOBAL_SETTINGS.get("preferDaemon", True),
     }

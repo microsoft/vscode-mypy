@@ -3,7 +3,6 @@
 """
 Test for linting over LSP.
 """
-import pathlib
 from threading import Event
 from typing import List
 
@@ -694,115 +693,6 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
 
         # Only reports diagnostics on files that have problems
         assert_that(actual, is_(expected))
-
-
-@pytest.mark.parametrize("value", [True, False], ids=["include-stdlib", "skip-stdlib"])
-def test_stdlib_filtering(value: bool):
-    """Test to ensure stdlib filtering setting works."""
-    contents = TEST_FILE_PATH.read_text(encoding="utf-8")
-
-    actual = []
-    with session.LspSession() as ls_session:
-        default_init = defaults.vscode_initialize_defaults()
-        init_options = default_init["initializationOptions"]
-        init_options["settings"][0]["includeStdLib"] = value
-        init_options["globalSettings"]["includeStdLib"] = value
-        init_options["settings"][0]["preferDaemon"] = False
-        init_options["globalSettings"]["preferDaemon"] = False
-        ls_session.initialize(default_init)
-
-        # trick pylint into thinking the file is stdlib file
-        FAKE_ROOT = pathlib.Path(pytest.__file__).parent
-
-        done = Event()
-
-        def _handler(params):
-            nonlocal actual
-            actual = params
-            done.set()
-
-        ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
-
-        with utils.python_file(contents, FAKE_ROOT) as f:
-            FAKE_TEST_URI = utils.as_uri(str(f))
-            ls_session.notify_did_open(
-                {
-                    "textDocument": {
-                        "uri": FAKE_TEST_URI,
-                        "languageId": "python",
-                        "version": 1,
-                        "text": contents,
-                    }
-                }
-            )
-
-            # wait for some time to receive all notifications
-            done.wait(TIMEOUT)
-
-    expected = {
-        "uri": FAKE_TEST_URI,
-        "diagnostics": [
-            {
-                "range": {
-                    "start": {"line": 2, "character": 6},
-                    "end": {
-                        "line": 2,
-                        "character": 7,
-                    },
-                },
-                "message": 'Name "x" is not defined',
-                "severity": 1,
-                "code": "name-defined",
-                "codeDescription": {
-                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-name-defined"
-                },
-                "source": "Mypy",
-            },
-            {
-                "range": {
-                    "start": {"line": 6, "character": 21},
-                    "end": {
-                        "line": 6,
-                        "character": 33,
-                    },
-                },
-                "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
-                "severity": 1,
-                "code": "override",
-                "codeDescription": {
-                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-override"
-                },
-                "source": "Mypy",
-            },
-            {
-                "range": {
-                    "start": {"line": 6, "character": 21},
-                    "end": {
-                        "line": 6,
-                        "character": 33,
-                    },
-                },
-                "message": """This violates the Liskov substitution principle
-See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-It is recommended for "__eq__" to work with arbitrary objects, for example:
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Foo):
-            return NotImplemented
-        return <logic to compare two Foo instances>""",
-                "severity": 3,
-                "code": "note",
-                "codeDescription": {
-                    "href": "https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides"
-                },
-                "source": "Mypy",
-            },
-        ],
-    }
-
-    if value:
-        assert_that(actual, is_(expected))
-    else:
-        assert_that(actual, is_({"uri": FAKE_TEST_URI, "diagnostics": []}))
 
 
 @pytest.mark.parametrize(

@@ -21,7 +21,6 @@ export interface ISettings {
     interpreter: string[];
     importStrategy: string;
     showNotifications: string;
-    includeStdLib: boolean;
     extraPaths: string[];
     reportingScope: string;
     preferDaemon: boolean;
@@ -123,7 +122,6 @@ export async function getWorkspaceSettings(
         importStrategy: config.get<string>('importStrategy', 'useBundled'),
         showNotifications: config.get<string>('showNotifications', 'off'),
         extraPaths: resolveVariables(extraPaths, workspace),
-        includeStdLib: config.get<boolean>('includeStdLib', false),
         reportingScope: config.get<string>('reportingScope', 'file'),
         preferDaemon: config.get<boolean>('preferDaemon', true),
     };
@@ -157,7 +155,6 @@ export async function getGlobalSettings(namespace: string, includeInterpreter?: 
         importStrategy: getGlobalValue<string>(config, 'importStrategy', 'useBundled'),
         showNotifications: getGlobalValue<string>(config, 'showNotifications', 'off'),
         extraPaths: getGlobalValue<string[]>(config, 'extraPaths', []),
-        includeStdLib: config.get<boolean>('includeStdLib', false),
         reportingScope: config.get<string>('reportingScope', 'file'),
         preferDaemon: config.get<boolean>('preferDaemon', true),
     };
@@ -176,7 +173,6 @@ export function checkIfConfigurationChanged(e: ConfigurationChangeEvent, namespa
         `${namespace}.reportingScope`,
         `${namespace}.preferDaemon`,
         `${namespace}.ignorePatterns`,
-        `${namespace}.includeStdLib`,
         'python.analysis.extraPaths',
     ];
     const changed = settings.map((s) => e.affectsConfiguration(s));

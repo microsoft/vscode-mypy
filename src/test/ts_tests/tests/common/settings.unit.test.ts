@@ -79,10 +79,6 @@ suite('Settings Tests', () => {
                 .setup((c) => c.get('ignorePatterns', []))
                 .returns(() => [])
                 .verifiable(TypeMoq.Times.atLeastOnce());
-            configMock
-                .setup((c) => c.get('includeStdLib', false))
-                .returns(() => false)
-                .verifiable(TypeMoq.Times.atLeastOnce());
 
             pythonConfigMock
                 .setup((c) => c.get('linting.mypyArgs', []))
@@ -109,7 +105,6 @@ suite('Settings Tests', () => {
             assert.deepStrictEqual(settings.workspace, workspace1.uri.toString());
             assert.deepStrictEqual(settings.extraPaths, []);
             assert.deepStrictEqual(settings.ignorePatterns, []);
-            assert.deepStrictEqual(settings.includeStdLib, false);
 
             configMock.verifyAll();
             pythonConfigMock.verifyAll();
@@ -158,10 +153,6 @@ suite('Settings Tests', () => {
             configMock
                 .setup((c) => c.get('ignorePatterns', []))
                 .returns(() => [])
-                .verifiable(TypeMoq.Times.atLeastOnce());
-            configMock
-                .setup((c) => c.get('includeStdLib', false))
-                .returns(() => false)
                 .verifiable(TypeMoq.Times.atLeastOnce());
 
             pythonConfigMock
@@ -250,10 +241,6 @@ suite('Settings Tests', () => {
             configMock
                 .setup((c) => c.get('ignorePatterns', []))
                 .returns(() => [])
-                .verifiable(TypeMoq.Times.atLeastOnce());
-            configMock
-                .setup((c) => c.get('includeStdLib', false))
-                .returns(() => false)
                 .verifiable(TypeMoq.Times.atLeastOnce());
 
             pythonConfigMock

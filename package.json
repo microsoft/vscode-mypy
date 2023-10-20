@@ -123,12 +123,6 @@
                     "scope": "window",
                     "type": "string"
                 },
-                "mypy-type-checker.includeStdLib": {
-                    "default": false,
-                    "description": "%settings.includeStdLib.description%",
-                    "scope": "resource",
-                    "type": "boolean"
-                },
                 "mypy-type-checker.interpreter": {
                     "default": [],
                     "markdownDescription": "%settings.interpreter.description%",

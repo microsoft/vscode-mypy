@@ -18,6 +18,5 @@
     "settings.showNotifications.off.description": "All notifications are turned off, any errors or warning are still available in the logs.",
     "settings.showNotifications.onError.description": "Notifications are shown only in the case of an error.",
     "settings.showNotifications.onWarning.description": "Notifications are shown for errors and warnings.",
-    "settings.showNotifications.always.description": "Notifications are show for anything that the server chooses to show.",
-    "settings.includeStdLib.description": "Controls whether to filter out files from standard library from being linted. Applies to `reportingScope==file` only."
+    "settings.showNotifications.always.description": "Notifications are show for anything that the server chooses to show."
 }
