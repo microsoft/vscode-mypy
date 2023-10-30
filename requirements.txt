@@ -54,7 +54,7 @@ mypy==1.6.1 \
     --hash=sha256:d8fbb68711905f8912e5af474ca8b78d077447d8f3918997fecbf26943ff3cbb \
     --hash=sha256:e5012e5cc2ac628177eaac0e83d622b2dd499e28253d4107a08ecc59ede3fc2c \
     --hash=sha256:eb4f18589d196a4cbe5290b435d135dee96567e07c2b2d43b5c4621b6501531a
-    # via -r ./requirements.in
+    # via -r requirements.in
 mypy-extensions==1.0.0 \
     --hash=sha256:4392f6c0eb8a5668a69e23d168ffa70f0be9ccfd32b5cc2d26a34ae5b844552d \
     --hash=sha256:75dbf8955dc00442a438fc4d0666508a9a97b6bd41aa2f0ffe9d2f2725af0782
@@ -62,11 +62,11 @@ mypy-extensions==1.0.0 \
 packaging==23.2 \
     --hash=sha256:048fb0e9405036518eaaf48a55953c750c11e1a1b68e0dd1a9d62ed0c092cfc5 \
     --hash=sha256:8c491190033a9af7e1d931d0b5dacc2ef47509b34dd0de67ed209b5203fc88c7
-    # via -r ./requirements.in
-pygls==1.1.1 \
-    --hash=sha256:330704551a335b443bf1cdfb0507f121608591095898d451f0007eeb1510067c \
-    --hash=sha256:b1b4ddd6f800a5573f61f0ec2cd3bc7a859d171f48142b46e1de35a1357c00fe
-    # via -r ./requirements.in
+    # via -r requirements.in
+pygls==1.1.2 \
+    --hash=sha256:783d29c93679bb6756772f2de9b9f53b1a6fdf3fba66aeca23e87aa8aab20ecf \
+    --hash=sha256:93fe17c01fd03307774290e685e7fa25bc1411cd72f243ff33eef21927fd0ad5
+    # via -r requirements.in
 tomli==2.0.1 \
     --hash=sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc \
     --hash=sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f
