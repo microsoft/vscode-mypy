@@ -87,6 +87,13 @@ def is_stdlib_file(file_path: str) -> bool:
     return any(normalized_path.startswith(path) for path in _stdlib_paths)
 
 
+def is_match(patterns: List[str], file_path: str) -> bool:
+    """Returns true if the file matches one of the glob patterns."""
+    if not patterns:
+        return False
+    return any(pathlib.Path(file_path).match(pattern) for pattern in patterns)
+
+
 # pylint: disable-next=too-few-public-methods
 class RunResult:
     """Object to hold result from running tool."""

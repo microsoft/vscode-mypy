@@ -2,7 +2,7 @@
     "name": "mypy-type-checker",
     "displayName": "Mypy Type Checker",
     "description": "%extension.description%",
-    "version": "2023.3.0",
+    "version": "2023.5.0-dev",
     "preview": true,
     "serverInfo": {
         "name": "Mypy",
@@ -74,6 +74,16 @@
                     "scope": "resource",
                     "type": "array"
                 },
+                "mypy-type-checker.cwd": {
+                    "default": "${workspaceFolder}",
+                    "description": "%settings.cwd.description%",
+                    "scope": "resource",
+                    "type": "string",
+                    "examples": [
+                        "${workspaceFolder}/src",
+                        "${fileDirname}"
+                    ]
+                },
                 "mypy-type-checker.path": {
                     "default": [],
                     "markdownDescription": "%settings.path.description%",
@@ -82,6 +92,22 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "mypy-type-checker.ignorePatterns": {
+                    "default": [],
+                    "description": "%settings.ignorePatterns.description%",
+                    "items": {
+                        "type": "string"
+                    },
+                    "scope": "resource",
+                    "type": "array",
+                    "uniqueItems": true,
+                    "examples": [
+                        [
+                            "**/site-packages/**/*.py",
+                            ".vscode/*.py"
+                        ]
+                    ]
                 },
                 "mypy-type-checker.importStrategy": {
                     "default": "useBundled",
@@ -184,27 +210,27 @@
         "vscode-languageclient": "^8.1.0"
     },
     "devDependencies": {
-        "@types/chai": "^4.3.6",
-        "@types/fs-extra": "^11.0.2",
+        "@types/chai": "^4.3.9",
+        "@types/fs-extra": "^11.0.3",
         "@types/glob": "^8.1.0",
-        "@types/mocha": "^10.0.1",
+        "@types/mocha": "^10.0.3",
         "@types/node": "16.x",
-        "@types/sinon": "^10.0.16",
+        "@types/sinon": "^10.0.20",
         "@types/vscode": "^1.74.0",
-        "@typescript-eslint/eslint-plugin": "^6.7.0",
-        "@typescript-eslint/parser": "^6.7.0",
-        "@vscode/test-electron": "^2.3.4",
-        "@vscode/vsce": "^2.21.0",
-        "chai": "^4.3.8",
-        "eslint": "^8.49.0",
-        "glob": "^10.3.4",
+        "@typescript-eslint/eslint-plugin": "^6.8.0",
+        "@typescript-eslint/parser": "^6.8.0",
+        "@vscode/test-electron": "^2.3.5",
+        "@vscode/vsce": "^2.21.1",
+        "chai": "^4.3.10",
+        "eslint": "^8.51.0",
+        "glob": "^10.3.10",
         "mocha": "^10.2.0",
         "prettier": "^3.0.3",
-        "sinon": "^16.0.0",
-        "ts-loader": "^9.4.4",
+        "sinon": "^16.1.1",
+        "ts-loader": "^9.5.0",
         "typemoq": "^2.1.0",
         "typescript": "^5.2.2",
-        "webpack": "^5.88.2",
+        "webpack": "^5.89.0",
         "webpack-cli": "^5.1.4"
     }
 }

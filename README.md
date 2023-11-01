@@ -6,7 +6,7 @@ A Visual Studio Code extension with support for the Mypy type checker. This exte
 
 This extension supports all [actively supported versions](https://devguide.python.org/#status-of-python-branches) of the Python language (i.e., Python >= 3.8).
 
-For more information on Mypy, see https://www.mypy-lang.org/.
+For more information on Mypy, see https://www.mypy-lang.org/
 
 ## Usage and Features
 
@@ -24,7 +24,6 @@ The Mypy extension provides a series of features to help your productivity while
 You can skip type checking with Mypy for specific files or directories by setting the `mypy-type-checker.ignorePatterns` setting.
 
 If you wish to disable Mypy for your entire workspace or globally, you can [disable this extension](https://code.visualstudio.com/docs/editor/extension-marketplace#_disable-an-extension) in Visual Studio Code.
-
 
 ## Settings
 
