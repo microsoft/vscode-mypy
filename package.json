@@ -2,7 +2,7 @@
     "name": "mypy-type-checker",
     "displayName": "Mypy Type Checker",
     "description": "%extension.description%",
-    "version": "2023.6.0",
+    "version": "2023.7.0-dev",
     "preview": true,
     "serverInfo": {
         "name": "Mypy",
@@ -226,7 +226,7 @@
         "glob": "^10.3.10",
         "mocha": "^10.2.0",
         "prettier": "^3.0.3",
-        "sinon": "^17.0.0",
+        "sinon": "^17.0.1",
         "ts-loader": "^9.5.0",
         "typemoq": "^2.1.0",
         "typescript": "^5.2.2",
