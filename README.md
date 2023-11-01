@@ -2,6 +2,8 @@
 
 A Visual Studio Code extension with support for the Mypy type checker. This extension ships with `mypy=1.5.1`.
 
+> **Note**: The minimum version of Mypy this extension supports is `1.0.0`.
+
 This extension supports all [actively supported versions](https://devguide.python.org/#status-of-python-branches) of the Python language (i.e., Python >= 3.8).
 
 For more information on Mypy, see https://www.mypy-lang.org/.
@@ -23,7 +25,6 @@ You can skip type checking with Mypy for specific files or directories by settin
 
 If you wish to disable Mypy for your entire workspace or globally, you can [disable this extension](https://code.visualstudio.com/docs/editor/extension-marketplace#_disable-an-extension) in Visual Studio Code.
 
-> **Note**: The minimum version of Mypy this extension supports is `1.0.0`.
 
 ## Settings
 
@@ -35,7 +36,7 @@ There are several settings you can configure to customize the behavior of this e
 | mypy-type-checker.severity       | `{ "error": "Error", "note": "Information" }` | Mapping of Mypy's message types to VS Code's diagnostic severity levels as displayed in the Problems window. You can also use it to override specific Mypy error codes. <br>For example: `{ "error": "Error", "note": "Information", "name-defined": "Warning" }`                                                                                                                                                                                                                                                                                                                                                             |
 | mypy-type-checker.path           | `[]`                                          | Path or command to be used by the extension to type check Python files with Mypy. Accepts an array of a single or multiple strings. If passing a command, each argument should be provided as a separate string in the array. If set to `["mypy"]`, it will use the version of Mypy available in the `PATH` environment variable. Note: Using this option may slowdown type checking. <br> Examples: <br>- `["~/global_env/mypy"]` <br>- `["conda", "run", "-n", "lint_env", "python", "-m", "mypy"]`                                                                                                                         |
 | mypy-type-checker.interpreter    | `[]`                                          | Path to a Python executable or a command that will be used to launch the Mypy server and any subprocess. Accepts an array of a single or multiple strings. When set to `[]`, the extension will use the path to the selected Python interpreter. If passing a command, each argument should be provided as a separate string in the array.                                                                                                                                                                                                                                                                                    |
-| mypy-type-checker.importStrategy | `useBundled`                                  | Defines which Mypy to be used to type check Python files. When set to `useBundled`, the extension will use the Mypy binary that is shipped with the extension. When set to `fromEnvironment`, the extension will attempt to use the Mypy binary and all dependencies that are available in the currently selected environment. Note: If the extension can't find a valid Mypy binary in the selected environment, it will fallback to using the Mypy binary that is shipped with the extension. Note: The `mypy-type-checker.path` setting takes precedence and overrides the behavior of `mypy-type-checker.importStrategy`. |
+| mypy-type-checker.importStrategy | `useBundled`                                  | Defines which Mypy binary to be used to type check Python files. When set to `useBundled`, the extension will use the Mypy binary that is shipped with the extension. When set to `fromEnvironment`, the extension will attempt to use the Mypy binary and all dependencies that are available in the currently selected environment. Note: If the extension can't find a valid Mypy binary in the selected environment, it will fallback to using the Mypy binary that is shipped with the extension. Note: The `mypy-type-checker.path` setting takes precedence and overrides the behavior of `mypy-type-checker.importStrategy`. |
 
 | mypy-type-checker.showNotifications | `off` | Controls when notifications are shown by this extension. Accepted values are `onError`, `onWarning`, `always` and `off`. |
 
