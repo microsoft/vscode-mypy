@@ -76,7 +76,7 @@
                 },
                 "mypy-type-checker.cwd": {
                     "default": "${workspaceFolder}",
-                    "description": "%settings.cwd.description%",
+                    "markdownDescription": "%settings.cwd.description%",
                     "scope": "resource",
                     "type": "string",
                     "examples": [
@@ -95,7 +95,7 @@
                 },
                 "mypy-type-checker.ignorePatterns": {
                     "default": [],
-                    "description": "%settings.ignorePatterns.description%",
+                    "markdownDescription": "%settings.ignorePatterns.description%",
                     "items": {
                         "type": "string"
                     },
