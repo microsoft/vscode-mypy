@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import contextlib
+import fnmatch
 import io
 import os
 import pathlib
@@ -88,10 +89,10 @@ def is_stdlib_file(file_path: str) -> bool:
 
 
 def is_match(patterns: List[str], file_path: str) -> bool:
-    """Returns true if the file matches one of the glob patterns."""
+    """Returns true if the file matches one of the fnmatch patterns."""
     if not patterns:
         return False
-    return any(pathlib.Path(file_path).match(pattern) for pattern in patterns)
+    return any(fnmatch.fnmatch(file_path, pattern) for pattern in patterns)
 
 
 # pylint: disable-next=too-few-public-methods
