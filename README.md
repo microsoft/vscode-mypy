@@ -88,7 +88,7 @@ There are several settings you can configure to customize the behavior of this e
     <tr>
       <td>mypy-type-checker.ignorePatterns</td>
       <td><code>[]</code></td>
-      <td>Configure <a href="https://code.visualstudio.com/docs/editor/glob-patterns">glob patterns</a> to exclude files or folders from being type checked by Mypy.</td>
+      <td>Configure <a href="https://docs.python.org/3/library/fnmatch.html">glob patterns</a> as supported by the fnmatch Python library to exclude files or folders from being type checked by Mypy.</td>
     </tr>
 </table>
 
