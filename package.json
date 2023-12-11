@@ -136,7 +136,7 @@
                     "default": false,
                     "markdownDescription": "%settings.preferDaemon.description%",
                     "scope": "resource",
-                    "type": "boolean",
+                    "type": "boolean"
                 },
                 "mypy-type-checker.reportingScope": {
                     "default": "file",
