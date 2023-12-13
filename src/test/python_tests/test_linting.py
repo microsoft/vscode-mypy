@@ -13,6 +13,10 @@ from .lsp_test_client import constants, defaults, session, utils
 
 TEST_FILE_PATH = constants.TEST_DATA / "sample1" / "sample.py"
 TEST_FILE_URI = utils.as_uri(str(TEST_FILE_PATH))
+
+TEST_FILE_PATH2 = constants.TEST_DATA / "sample2" / "sample.py"
+TEST_FILE_URI2 = utils.as_uri(str(TEST_FILE_PATH2))
+
 LINTER = utils.get_server_info_defaults()
 TIMEOUT = 30  # 30 seconds
 
@@ -841,6 +845,66 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
                 "code": "note",
                 "codeDescription": {
                     "href": "https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides"
+                },
+                "source": "Mypy",
+            },
+        ],
+    }
+
+    assert_that(actual, is_(expected))
+
+
+def test_diagnostics_missing_column():
+    """Test to ensure linting on file open."""
+    contents = TEST_FILE_PATH2.read_text(encoding="utf-8")
+
+    actual = []
+    with session.LspSession() as ls_session:
+        default_init = defaults.vscode_initialize_defaults()
+        init_options = default_init["initializationOptions"]
+        init_options["settings"][0]["args"] = ["--warn-unused-ignores"]
+        ls_session.initialize(default_init)
+
+        done = Event()
+
+        def _handler(params):
+            nonlocal actual
+            actual = params
+            done.set()
+
+        def _log_handler(params):
+            print(params)
+
+        ls_session.set_notification_callback(session.WINDOW_LOG_MESSAGE, _log_handler)
+        ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
+
+        ls_session.notify_did_open(
+            {
+                "textDocument": {
+                    "uri": TEST_FILE_URI2,
+                    "languageId": "python",
+                    "version": 1,
+                    "text": contents,
+                }
+            }
+        )
+
+        # wait for some time to receive all notifications
+        assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
+
+    expected = {
+        "uri": TEST_FILE_URI2,
+        "diagnostics": [
+            {
+                "range": {
+                    "start": {"line": 0, "character": 0},
+                    "end": {"line": 0, "character": 0},
+                },
+                "message": 'Unused "type: ignore" comment',
+                "severity": 1,
+                "code": "unused-ignore",
+                "codeDescription": {
+                    "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-unused-ignore"
                 },
                 "source": "Mypy",
             },
