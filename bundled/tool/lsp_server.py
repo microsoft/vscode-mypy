@@ -276,7 +276,7 @@ def _linting_helper(document: workspace.Document) -> None:
 
 
 DIAGNOSTIC_RE = re.compile(
-    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+):(?P<char>\d+)(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:  \[(?P<code>[\w-]+)\])?$"
+    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+)(?::(?P<char>\d+))?(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:  )?(?:\[(?P<code>[\w-]+)\])?$"
 )
 
 
@@ -307,8 +307,8 @@ def _parse_output_using_regex(
             continue
 
         filepath = utils.normalize_path(data["filepath"])
-        type_ = data["type"]
-        code = data["code"]
+        type_ = data.get("type")
+        code = data.get("code")
 
         if type_ == "note":
             if see_href is None and data["message"].startswith(utils.SEE_HREF_PREFIX):
@@ -334,7 +334,7 @@ def _parse_output_using_regex(
             href = utils.ERROR_CODE_BASE_URL + code if code else None
 
         start_line = int(data["line"])
-        start_char = int(data["char"])
+        start_char = int(data["char"] if data["char"] is not None else 1)
 
         end_line = data["end_line"]
         end_char = data["end_char"]
