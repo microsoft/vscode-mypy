@@ -77,6 +77,11 @@ def normalize_path(file_path: str) -> str:
     return str(pathlib.Path(file_path).resolve())
 
 
+def absolute_path(file_path: str) -> str:
+    """Returns absolute path without symlink resolve."""
+    return str(pathlib.Path(file_path).resolve())
+
+
 def is_current_interpreter(executable) -> bool:
     """Returns true if the executable path is same as the current interpreter."""
     return is_same_path(executable, sys.executable)
