@@ -79,7 +79,7 @@ def normalize_path(file_path: str) -> str:
 
 def absolute_path(file_path: str) -> str:
     """Returns absolute path without symlink resolve."""
-    return str(pathlib.Path(file_path).resolve())
+    return str(pathlib.Path(file_path).absolute())
 
 
 def is_current_interpreter(executable) -> bool:
