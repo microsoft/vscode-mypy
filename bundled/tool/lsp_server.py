@@ -306,7 +306,7 @@ def _parse_output_using_regex(
         if not data:
             continue
 
-        filepath = utils.normalize_path(data["filepath"])
+        filepath = utils.absolute_path(data["filepath"])
         type_ = data.get("type")
         code = data.get("code")
 
