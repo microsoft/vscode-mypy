@@ -14,7 +14,13 @@ import {
 } from './common/settings';
 import { loadServerDefaults } from './common/setup';
 import { getLSClientTraceLevel, getProjectRoot } from './common/utilities';
-import { createOutputChannel, onDidChangeConfiguration, registerCommand } from './common/vscodeapi';
+import {
+    createFileSystemWatcher,
+    createOutputChannel,
+    getWorkspaceFolders,
+    onDidChangeConfiguration,
+    registerCommand,
+} from './common/vscodeapi';
 import { registerLanguageStatusItem, updateStatus } from './common/status';
 import { PYTHON_VERSION } from './common/constants';
 
@@ -63,6 +69,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             lsClient = await restartServer(workspaceSetting, serverId, serverName, outputChannel, lsClient);
         }
     };
+
+    getWorkspaceFolders().forEach((workspaceFolder) => {
+        const watcher = createFileSystemWatcher(
+            new vscode.RelativePattern(workspaceFolder, '{pyproject.toml,mypy.ini}'),
+        );
+        context.subscriptions.push(
+            watcher,
+            watcher.onDidChange(async () => {
+                await runServer();
+            }),
+        );
+    });
 
     context.subscriptions.push(
         onDidChangePythonInterpreter(async () => {
