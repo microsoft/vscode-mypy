@@ -183,6 +183,102 @@ def did_close(params: lsp.DidCloseTextDocumentParams) -> None:
         _clear_diagnostics(document)
 
 
+@LSP_SERVER.feature(lsp.TEXT_DOCUMENT_COMPLETION)
+def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
+    """LSP handler for textDocument/completion request."""
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
+    settings = copy.deepcopy(_get_settings_by_document(document))
+    if not get_mypy_info(settings).is_daemon:
+        return lsp.CompletionList(
+            is_incomplete=False,
+            items=[
+                lsp.CompletionItem(
+                    label="Daemon mode required", kind=lsp.CompletionItemKind.Event
+                )
+            ],
+        )
+    # If character is a `.` then back up a character.
+    log_to_output(f"Current character is {document.source[document.offset_at_position(params.position) - 1]}")
+    if document.source[document.offset_at_position(params.position) - 1] == ".":
+        log_to_output("Backing up a character")
+        params.position.character -= 1
+    log_to_output(
+        f"Fetching completions for {document.path}:{params.position.line+1}:{params.position.character+1}"
+    )
+    result = _run_dmypy_command(
+        [
+            "--show",
+            "attrs",
+            "--force-reload",
+            f"{document.path}:{params.position.line+1}:{params.position.character+1}",
+        ],
+        settings,
+        "inspect",
+    )
+    if result.exit_code > 1:
+        raise ValueError(f"Failed to get completions: {result.stderr}")
+    elif result.exit_code == 1:
+        return lsp.CompletionList(
+            is_incomplete=False,
+            items=[],
+        )
+    lines: list[str] = result.stdout.strip().split("\n")
+    log_to_output(f"Lines: {"\n".join(lines)}")
+    completions: dict[str, list[str]] = json.loads(lines[0])
+    log_to_output(f"Completions: {completions}")
+    first_completion_attributes = completions[list(completions.keys())[0]]
+    log_to_output(f"First completion attributes: {first_completion_attributes}")
+    return lsp.CompletionList(
+        is_incomplete=False,
+        items=[
+            lsp.CompletionItem(label=a, kind=lsp.CompletionItemKind.Field)
+            for a in first_completion_attributes
+            if not a.startswith("_")
+        ],
+    )
+
+
+@LSP_SERVER.feature(lsp.TEXT_DOCUMENT_HOVER)
+def hover(params: lsp.HoverParams) -> lsp.Hover | None:
+    """LSP handler for textDocument/hover request."""
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
+    settings = copy.deepcopy(_get_settings_by_document(document))
+    if not get_mypy_info(settings).is_daemon:
+        return lsp.Hover(contents="Daemon mode required")
+    result = _run_dmypy_command(
+        [
+            "--show",
+            "attrs",
+            # "--force-reload",
+            f"{document.path}:{params.position.line+1}:{params.position.character+1}",
+        ],
+        copy.deepcopy(_get_settings_by_document(document)),
+        "inspect",
+    )
+    if result.exit_code == 1:
+        # Retry with force-reload
+        result = _run_dmypy_command(
+            [
+                "--show",
+                "attrs",
+                "--force-reload",
+                f"{document.path}:{params.position.line+1}:{params.position.character+1}",
+            ],
+            copy.deepcopy(_get_settings_by_document(document)),
+            "inspect",
+        )
+        if result.exit_code == 1:
+            return None
+    elif result.exit_code > 1:
+        raise ValueError(f"Failed to get mypy info: {result.stderr}")
+    completions: dict[str, list[str]] = json.loads(result.stdout.strip().split("\n")[0])
+    return lsp.Hover(
+        contents=lsp.MarkupContent(
+            lsp.MarkupKind.Markdown, f"mypy: `{list(completions.keys())[0]}`"
+        )
+    )
+
+
 def _is_empty_diagnostics(
     filepath: str, results: Optional[Dict[str, str | None]]
 ) -> bool:
@@ -617,7 +713,7 @@ def _get_dmypy_args(settings: Dict[str, Any], command: str) -> List[str]:
         args = ["--status-file", STATUS_FILE_NAME]
         DMYPY_ARGS[key] = args
 
-    if command in ["start", "restart", "status", "stop", "kill"]:
+    if command in ["start", "restart", "status", "stop", "kill", "inspect"]:
         return DMYPY_ARGS[key] + [command]
 
     return DMYPY_ARGS[key] + [command, "--"]
