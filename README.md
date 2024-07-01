@@ -1,6 +1,6 @@
 # Mypy extension for Visual Studio Code
 
-A Visual Studio Code extension with support for the Mypy type checker. This extension ships with `mypy=1.8.0`.
+A Visual Studio Code extension with support for the Mypy type checker. This extension ships with `mypy=1.10.1`.
 
 > **Note**: The minimum version of Mypy this extension supports is `1.0.0`. If you have any issues with Mypy, please report it to [this issue tracker](https://github.com/python/mypy/issues) as this extension is just a wrapper around Mypy.
 
