@@ -68,6 +68,7 @@ def _get_package_data(package):
 
 def _update_npm_packages(session: nox.Session) -> None:
     pinned = {
+        "eslint",
         "vscode-languageclient",
         "@types/vscode",
         "@types/node",
