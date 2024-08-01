@@ -22,7 +22,7 @@ runs:
         python-version: 3.8
 
     - name: Pip cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-build-vsix-${{ hashFiles('**/requirements.txt') }}
@@ -62,7 +62,7 @@ runs:
       shell: bash
 
     - name: Upload VSIX
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: linter-package
         path: |
