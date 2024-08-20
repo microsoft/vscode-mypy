@@ -658,9 +658,12 @@ def get_cwd(settings: Dict[str, Any], document: Optional[workspace.Document]) ->
         # until we leave the workspace
         while candidate.is_relative_to(workspaceFolder):
             # check if pyproject exists
-            if (candidate / "pyproject.toml").is_file():
-                log_to_output(f"found pyproject in {candidate}", lsp.MessageType.Debug)
-                return os.fspath(candidate)
+            check_for = ["pyproject.toml", "mypy.ini"]
+            for n in check_for:
+                candidate_file = candidate / n
+                if candidate_file.is_file():
+                    log_to_output(f"found {n}, using {candidate}", lsp.MessageType.Debug)
+                    return os.fspath(candidate)
             # starting from the current file and working our way up
             else:
                 candidate = candidate.parent
