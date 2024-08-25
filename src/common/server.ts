@@ -30,7 +30,7 @@ async function createServer(
     let cwd: string
     if (settings.cwd === '${fileDirname}') {
         cwd = Uri.parse(settings.workspace).fsPath
-    } else if (settings.cwd === '${filePyproject}') {
+    } else if (settings.cwd === '${nearestConfig}') {
         cwd = Uri.parse(settings.workspace).fsPath
     } else {
         cwd = settings.cwd;

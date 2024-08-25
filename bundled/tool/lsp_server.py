@@ -650,7 +650,7 @@ def get_cwd(settings: Dict[str, Any], document: Optional[workspace.Document]) ->
             return os.fspath(pathlib.Path(document.path).parent)
         return settings["workspaceFS"]
 
-    if settings["cwd"] == "${filePyproject}":
+    if settings["cwd"] == "${nearestConfig}":
         if document is None:
             return settings["workspaceFS"]
         workspaceFolder = pathlib.Path(settings["workspaceFS"])
