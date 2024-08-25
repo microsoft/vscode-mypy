@@ -27,11 +27,11 @@ async function createServer(
     initializationOptions: IInitOptions,
 ): Promise<LanguageClient> {
     const command = settings.interpreter[0];
-    let cwd: string
+    let cwd: string;
     if (settings.cwd === '${fileDirname}') {
-        cwd = Uri.parse(settings.workspace).fsPath
+        cwd = Uri.parse(settings.workspace).fsPath;
     } else if (settings.cwd === '${nearestConfig}') {
-        cwd = Uri.parse(settings.workspace).fsPath
+        cwd = Uri.parse(settings.workspace).fsPath;
     } else {
         cwd = settings.cwd;
     }

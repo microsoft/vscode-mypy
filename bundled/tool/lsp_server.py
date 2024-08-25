@@ -642,17 +642,17 @@ def _get_env_vars(settings: Dict[str, Any]) -> Dict[str, str]:
 
 def get_cwd(settings: Dict[str, Any], document: Optional[workspace.Document]) -> str:
     """Returns cwd for the given settings and document."""
+    # this happens when running dmypy.
+    if document is None:
+        return settings["workspaceFS"]
+
     if settings["cwd"] == "${workspaceFolder}":
         return settings["workspaceFS"]
 
     if settings["cwd"] == "${fileDirname}":
-        if document is not None:
-            return os.fspath(pathlib.Path(document.path).parent)
-        return settings["workspaceFS"]
+        return os.fspath(pathlib.Path(document.path).parent)
 
     if settings["cwd"] == "${nearestConfig}":
-        if document is None:
-            return settings["workspaceFS"]
         workspaceFolder = pathlib.Path(settings["workspaceFS"])
         candidate = pathlib.Path(document.path).parent
         # until we leave the workspace
