@@ -655,20 +655,25 @@ def get_cwd(settings: Dict[str, Any], document: Optional[workspace.Document]) ->
     if settings["cwd"] == "${nearestConfig}":
         workspaceFolder = pathlib.Path(settings["workspaceFS"])
         candidate = pathlib.Path(document.path).parent
+        # check if pyproject exists
+        check_for = ["pyproject.toml", "mypy.ini"]
         # until we leave the workspace
         while candidate.is_relative_to(workspaceFolder):
-            # check if pyproject exists
-            check_for = ["pyproject.toml", "mypy.ini"]
             for n in check_for:
                 candidate_file = candidate / n
                 if candidate_file.is_file():
-                    log_to_output(f"found {n}, using {candidate}", lsp.MessageType.Debug)
+                    log_to_output(
+                        f"found {n}, using {candidate}", lsp.MessageType.Debug
+                    )
                     return os.fspath(candidate)
             # starting from the current file and working our way up
             else:
                 candidate = candidate.parent
         else:
-            log_to_output("failed to find pyproject.toml, using workspace root", lsp.MessageType.Debug)
+            log_to_output(
+                f"failed to find {', '.join(check_for)}; using workspace root",
+                lsp.MessageType.Debug,
+            )
             return settings["workspaceFS"]
 
     return settings["cwd"]
