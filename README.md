@@ -47,7 +47,7 @@ There are several settings you can configure to customize the behavior of this e
     <tr>
       <td>mypy-type-checker.cwd</td>
       <td><code>${workspaceFolder}</code></td>
-      <td>Sets the current working directory used to lint Python files with Mypy. By default, it uses the root directory of the workspace <code>${workspaceFolder}</code>. You can set it to <code>${fileDirname}</code> to use the parent folder of the file being linted as the working directory for Mypy.
+      <td>Sets the current working directory used to lint Python files with Mypy. By default, it uses the root directory of the workspace <code>${workspaceFolder}</code>. You can set it to <code>${fileDirname}</code> to use the parent folder of the file being linted as the working directory for Mypy. You can also set it to <code>${nearestConfig}</code> to use the nearest parent/ancestor folder which contains a <code>pyproject.toml</code> or a <code>mypy.ini</code> file.
       </td>
     </tr>
     <tr>

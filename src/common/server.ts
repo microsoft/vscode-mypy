@@ -27,7 +27,18 @@ async function createServer(
     initializationOptions: IInitOptions,
 ): Promise<LanguageClient> {
     const command = settings.interpreter[0];
-    const cwd = settings.cwd === '${fileDirname}' ? Uri.parse(settings.workspace).fsPath : settings.cwd;
+    let cwd: string;
+    if (settings.cwd === '${fileDirname}') {
+        cwd = Uri.parse(settings.workspace).fsPath;
+    } else if (settings.cwd === '${nearestConfig}') {
+        cwd = Uri.parse(settings.workspace).fsPath;
+    } else {
+        cwd = settings.cwd;
+    }
+
+    if (!fsapi.existsSync(cwd)) {
+        traceError(`Server cwd ${cwd} doesn't exist, server startup will probably fail`);
+    }
 
     // Set debugger path needed for debugging python code.
     const newEnv = { ...process.env };
