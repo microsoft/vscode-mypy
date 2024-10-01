@@ -7,6 +7,8 @@ import {
     commands,
     ConfigurationScope,
     Disposable,
+    FileSystemWatcher,
+    GlobPattern,
     languages,
     LanguageStatusItem,
     LogOutputChannel,
@@ -47,4 +49,13 @@ export function getWorkspaceFolder(uri: Uri): WorkspaceFolder | undefined {
 
 export function createLanguageStatusItem(id: string, selector: DocumentSelector): LanguageStatusItem {
     return languages.createLanguageStatusItem(id, selector);
+}
+
+export function createFileSystemWatcher(
+    globPattern: GlobPattern,
+    ignoreCreateEvents?: boolean,
+    ignoreChangeEvents?: boolean,
+    ignoreDeleteEvents?: boolean,
+): FileSystemWatcher {
+    return workspace.createFileSystemWatcher(globPattern, ignoreCreateEvents, ignoreChangeEvents, ignoreDeleteEvents);
 }
