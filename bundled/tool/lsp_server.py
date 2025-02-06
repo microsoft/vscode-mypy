@@ -705,7 +705,9 @@ def _run_tool_on_document(
         argv += _get_dmypy_args(settings, "run")
     argv += TOOL_ARGS + settings["args"] + extra_args
     if settings["reportingScope"] == "file":
-        argv += [document.path]
+        # pygls normalizes the path to lowercase on windows, but we need to resolve the
+        # correct capitalization to avoid https://github.com/python/mypy/issues/18590#issuecomment-2630249041
+        argv += [str(pathlib.Path(document.path).resolve())]
     else:
         argv += [cwd]
 
