@@ -708,6 +708,7 @@ def _run_tool_on_document(
         # pygls normalizes the path to lowercase on windows, but we need to resolve the
         # correct capitalization to avoid https://github.com/python/mypy/issues/18590#issuecomment-2630249041
         argv += [str(pathlib.Path(document.path).resolve())]
+        cwd = str(pathlib.Path(cwd).resolve())
     else:
         argv += [cwd]
 
