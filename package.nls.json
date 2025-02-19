@@ -11,6 +11,7 @@
     "settings.importStrategy.fromEnvironment.description": "Use Mypy from the selected environment. If the extension fails to find a valid Mypy binary, it will fallback to using the bundled version of Mypy.",
     "settings.interpreter.description": "Path to a Python executable or a command that will be used to launch the Mypy server and any subprocess. Accepts an array of a single or multiple strings. When set to `[]`, the extension will use the path to the selected Python interpreter. If passing a command, each argument should be provided as a separate string in the array.",
     "settings.preferDaemon.description": "Whether the Mypy daemon (`dmypy`) will take precedence over `mypy`for type checking. <br> Note: if `mypy-type-checker.reportingScope`is set to `workspace`, enabling the Mypy daemon will offer a faster type checking experience. This setting will be overridden if `mypy-type-checker.path`is set.",
+    "settings.daemonStatusFile.description": "Path to the status file used by the Mypy daemon (`dmypy`).",
     "settings.reportingScope.description": "Controls the scope of Mypy's problem reporting. If set to `file`, Mypy will limit its problem reporting to the files currently open in the editor. If set to `workspace`, Mypy will extend its problem reporting to include all files within the workspace.             ",
     "settings.reportingScope.file.description": "Problems are reported for the files open in the editor only.",
     "settings.reportingScope.workspace.description": "Problems are reported for all files within the workspace.",

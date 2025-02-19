@@ -92,6 +92,11 @@ There are several settings you can configure to customize the behavior of this e
       <td>(experimental) Whether the Mypy daemon (<code>dmypy</code>) will take precedence over <code>mypy</code> for type checking. Note: if <code>mypy-type-checker.reportingScope</code> is set to <code>workspace</code>, enabling the Mypy daemon will offer a faster type checking experience. This setting will be overridden if <code>mypy-type-checker.path</code> is set.
     </tr>
     <tr>
+      <td>mypy-type-checker.daemonStatusFile</td>
+      <td><code>""</code></td>
+      <td>(experimental) Path to the status file used by the Mypy daemon (<code>dmypy</code>).
+    </tr>
+    <tr>
       <td>mypy-type-checker.ignorePatterns</td>
       <td><code>[]</code></td>
       <td>Configure <a href="https://docs.python.org/3/library/fnmatch.html">glob patterns</a> as supported by the fnmatch Python library to exclude files or folders from being type checked by Mypy.</td>

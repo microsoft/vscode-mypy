@@ -25,6 +25,7 @@ export interface ISettings {
     extraPaths: string[];
     reportingScope: string;
     preferDaemon: boolean;
+    daemonStatusFile: string;
 }
 
 export function getExtensionSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings[]> {
@@ -120,6 +121,7 @@ export async function getWorkspaceSettings(
         extraPaths: resolveVariables(extraPaths, workspace),
         reportingScope: config.get<string>('reportingScope', 'file'),
         preferDaemon: config.get<boolean>('preferDaemon', true),
+        daemonStatusFile: config.get<string>('daemonStatusFile', ''),
     };
     return workspaceSetting;
 }
@@ -153,6 +155,7 @@ export async function getGlobalSettings(namespace: string, includeInterpreter?: 
         extraPaths: getGlobalValue<string[]>(config, 'extraPaths', []),
         reportingScope: config.get<string>('reportingScope', 'file'),
         preferDaemon: config.get<boolean>('preferDaemon', true),
+        daemonStatusFile: config.get<string>('daemonStatusFile', ''),
     };
     return setting;
 }
@@ -169,6 +172,7 @@ export function checkIfConfigurationChanged(e: ConfigurationChangeEvent, namespa
         `${namespace}.reportingScope`,
         `${namespace}.preferDaemon`,
         `${namespace}.ignorePatterns`,
+        `${namespace}.daemonStatusFile`,
         'python.analysis.extraPaths',
     ];
     const changed = settings.map((s) => e.affectsConfiguration(s));
