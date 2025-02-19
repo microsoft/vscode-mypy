@@ -12,3 +12,4 @@ export const DEBUG_SERVER_SCRIPT_PATH = path.join(BUNDLED_PYTHON_SCRIPTS_DIR, 't
 export const PYTHON_MAJOR = 3;
 export const PYTHON_MINOR = 8;
 export const PYTHON_VERSION = `${PYTHON_MAJOR}.${PYTHON_MINOR}`;
+export const LS_SERVER_RESTART_DELAY = 1000;

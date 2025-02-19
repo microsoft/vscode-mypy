@@ -3,9 +3,9 @@
 
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { LogLevel, Uri, WorkspaceFolder } from 'vscode';
+import { ConfigurationScope, LogLevel, Uri, WorkspaceFolder } from 'vscode';
 import { Trace } from 'vscode-jsonrpc/node';
-import { getWorkspaceFolders, isVirtualWorkspace } from './vscodeapi';
+import { getConfiguration, getWorkspaceFolders, isVirtualWorkspace } from './vscodeapi';
 import { DocumentSelector } from 'vscode-languageclient';
 
 function logLevelToTrace(logLevel: LogLevel): Trace {
@@ -75,4 +75,9 @@ export function getDocumentSelector(): DocumentSelector {
               { scheme: 'file', language: 'python' },
               { scheme: 'untitled', language: 'python' },
           ];
+}
+
+export function getInterpreterFromSetting(namespace: string, scope?: ConfigurationScope) {
+    const config = getConfiguration(namespace, scope);
+    return config.get<string[]>('interpreter');
 }

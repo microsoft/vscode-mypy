@@ -5,6 +5,7 @@ import { ConfigurationChangeEvent, ConfigurationScope, WorkspaceConfiguration, W
 import { traceLog, traceWarn } from './logging';
 import { getInterpreterDetails } from './python';
 import { getConfiguration, getWorkspaceFolders } from './vscodeapi';
+import { getInterpreterFromSetting } from './utilities';
 
 const DEFAULT_SEVERITY: Record<string, string> = {
     error: 'Error',
@@ -88,11 +89,6 @@ function getExtraPaths(_namespace: string, workspace: WorkspaceFolder): string[]
         traceLog('Using cwd from `python.analysis.extraPaths`.');
     }
     return legacyExtraPaths;
-}
-
-export function getInterpreterFromSetting(namespace: string, scope?: ConfigurationScope) {
-    const config = getConfiguration(namespace, scope);
-    return config.get<string[]>('interpreter');
 }
 
 export async function getWorkspaceSettings(
