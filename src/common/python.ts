@@ -6,14 +6,15 @@ import { commands, Disposable, Event, EventEmitter, Uri } from 'vscode';
 import { traceError, traceLog } from './logging';
 import { PythonExtension, ResolvedEnvironment } from '@vscode/python-extension';
 import { PYTHON_MAJOR, PYTHON_MINOR, PYTHON_VERSION } from './constants';
+import { getProjectRoot } from './utilities';
 
 export interface IInterpreterDetails {
     path?: string[];
     resource?: Uri;
 }
 
-const onDidChangePythonInterpreterEvent = new EventEmitter<IInterpreterDetails>();
-export const onDidChangePythonInterpreter: Event<IInterpreterDetails> = onDidChangePythonInterpreterEvent.event;
+const onDidChangePythonInterpreterEvent = new EventEmitter<void>();
+export const onDidChangePythonInterpreter: Event<void> = onDidChangePythonInterpreterEvent.event;
 
 let _api: PythonExtension | undefined;
 async function getPythonExtensionAPI(): Promise<PythonExtension | undefined> {
@@ -24,22 +25,59 @@ async function getPythonExtensionAPI(): Promise<PythonExtension | undefined> {
     return _api;
 }
 
+function sameInterpreter(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) {
+        return false;
+    }
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+let serverPython: string[] | undefined;
+function checkAndFireEvent(interpreter: string[] | undefined): void {
+    if (interpreter === undefined) {
+        if (serverPython) {
+            // Python was reset for this uri
+            serverPython = undefined;
+            onDidChangePythonInterpreterEvent.fire();
+            return;
+        } else {
+            return; // No change in interpreter
+        }
+    }
+
+    if (!serverPython || !sameInterpreter(serverPython, interpreter)) {
+        serverPython = interpreter;
+        onDidChangePythonInterpreterEvent.fire();
+    }
+}
+
+async function refreshServerPython(): Promise<void> {
+    const projectRoot = await getProjectRoot();
+    const interpreter = await getInterpreterDetails(projectRoot?.uri);
+    checkAndFireEvent(interpreter.path);
+}
+
 export async function initializePython(disposables: Disposable[]): Promise<void> {
     try {
         const api = await getPythonExtensionAPI();
 
         if (api) {
             disposables.push(
-                api.environments.onDidChangeActiveEnvironmentPath((e) => {
-                    onDidChangePythonInterpreterEvent.fire({ path: [e.path], resource: e.resource?.uri });
+                api.environments.onDidChangeActiveEnvironmentPath(async () => {
+                    await refreshServerPython();
                 }),
             );
 
-            traceLog('Waiting for interpreter from python extension.');
-            onDidChangePythonInterpreterEvent.fire(await getInterpreterDetails());
+            traceLog('Waiting for interpreter from Python extension.');
+            await refreshServerPython();
         }
     } catch (error) {
-        traceError('Error initializing python: ', error);
+        traceError('Error initializing Python: ', error);
     }
 }
 
