@@ -142,7 +142,8 @@
                     "default": "",
                     "markdownDescription": "%settings.daemonStatusFile.description%",
                     "scope": "resource",
-                    "type": "string"
+                    "type": "string",
+                    "tags": ["experimental"]
                 },
                 "mypy-type-checker.reportingScope": {
                     "default": "file",
