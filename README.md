@@ -1,8 +1,8 @@
 # Mypy extension for Visual Studio Code
 
-A Visual Studio Code extension with support for the Mypy type checker. This extension ships with `mypy=1.14.1`.
+A Visual Studio Code extension with support for the Mypy type checker. This extension ships with `mypy=1.15.0`.
 
-> **Note**: The minimum version of Mypy this extension supports is `1.0.0`. If you have any issues with Mypy, please report it to [this issue tracker](https://github.com/python/mypy/issues) as this extension is just a wrapper around Mypy.
+> **Note**: The minimum version of Mypy this extension supports is `1.15.0`. If you have any issues with Mypy, please report it to [this issue tracker](https://github.com/python/mypy/issues) as this extension is just a wrapper around Mypy.
 
 This extension supports all [actively supported versions](https://devguide.python.org/#status-of-python-branches) of the Python language.
 
@@ -15,7 +15,7 @@ The Mypy extension provides a series of features to help your productivity while
 -   **Integrated type checking**: Once this extension is installed in Visual Studio Code, Mypy will be automatically executed when you open a Python file, reporting any errors or warnings in the "Problems" window.
 -   **Customizable Mypy version**: By default, this extension uses the version of Mypy that is shipped with the extension. However, you can configure it to use a different binary installed in your environment through the `mypy-type-checker.importStrategy` setting, or set it to a custom Mypy executable through the `mypy-type-checker.path` settings.
 -   **Workspace-wide type checking**: By default, this extension will only report errors and warnings for files open in the editor. However, you can configure it to report errors and warnings for the entire workspace through the `mypy-type-checker.reportingScope` setting.
--   **Mono repo support**: If you are working with a mono repo, you can configure the extension offer type checking for Python files in subfolders of the workspace root folder by setting the `mypy-type-checker.cwd` setting to `${fileDirname}`. You can also set it to ignore/skip type checking for certain files or folder paths by specifying a glob pattern to the `mypy-type-checker.ignorePatterns` setting.
+-   **Mono repo support**: If you are working with a mono repo, you can configure the extension to offer type checking for Python files in subfolders of the workspace root folder by setting the `mypy-type-checker.cwd` setting to `${fileDirname}`. You can also set it to ignore/skip type checking for certain files or folder paths by specifying a glob pattern to the `mypy-type-checker.ignorePatterns` setting.
 -   **Customizable linting rules**: You can customize the severity of specific Mypy error codes through the `mypy-type-checker.severity` setting.
 -   **Mypy Daemon support**: This extension supports the Mypy daemon (`dmypy`) for faster type checking when the reporting scope is set to the entire workspace. To enable it, set the `mypy-type-checker.preferDaemon` setting to `true`.
 
