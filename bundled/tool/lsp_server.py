@@ -501,6 +501,7 @@ def _get_global_defaults():
         "extraPaths": GLOBAL_SETTINGS.get("extraPaths", []),
         "reportingScope": GLOBAL_SETTINGS.get("reportingScope", "file"),
         "preferDaemon": GLOBAL_SETTINGS.get("preferDaemon", True),
+        "daemonStatusFile": GLOBAL_SETTINGS.get("daemonStatusFile", ""),
     }
 
 
@@ -611,9 +612,12 @@ def _get_dmypy_args(settings: Dict[str, Any], command: str) -> List[str]:
         raise ValueError(f"Invalid dmypy command: {command}")
 
     if key not in DMYPY_ARGS:
-        STATUS_FILE_NAME = os.fspath(
-            DMYPY_STATUS_FILE_ROOT / f"status-{str(uuid.uuid4())}.json"
-        )
+        if settings["daemonStatusFile"]:
+            STATUS_FILE_NAME = settings["daemonStatusFile"]
+        else:
+            STATUS_FILE_NAME = os.fspath(
+                DMYPY_STATUS_FILE_ROOT / f"status-{str(uuid.uuid4())}.json"
+            )
         args = ["--status-file", STATUS_FILE_NAME]
         DMYPY_ARGS[key] = args
 
