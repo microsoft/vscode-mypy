@@ -249,7 +249,7 @@ def _linting_helper(document: workspace.Document) -> None:
                 # documents; this is fine/correct, we just need to account for it).
                 if reportingScope == "file" and is_file_same_as_document:
                     LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
-                elif reportingScope == "workspace":
+                elif reportingScope in ("workspace", "custom"):
                     _reported_file_paths.add(file_path)
                     uri = uris.from_fs_path(file_path)
                     LSP_SERVER.publish_diagnostics(uri, diagnostics)
@@ -260,7 +260,7 @@ def _linting_helper(document: workspace.Document) -> None:
                     # an empty diagnostic is returned to clear any old errors out.
                     _clear_diagnostics(document)
 
-            if reportingScope == "workspace":
+            if reportingScope == ("workspace", "custom"):
                 for file_path in _reported_file_paths:
                     if file_path not in parse_results:
                         uri = uris.from_fs_path(file_path)
@@ -713,8 +713,12 @@ def _run_tool_on_document(
         # correct capitalization to avoid https://github.com/python/mypy/issues/18590#issuecomment-2630249041
         argv += [str(pathlib.Path(document.path).resolve())]
         cwd = str(pathlib.Path(cwd).resolve())
-    else:
+    elif settings["reportingScope"] == "workspace":
         argv += [cwd]
+    elif settings["reportingScope"] == "custom":
+        # Let mypy use files defined by the configuration
+        pass
+
 
     log_to_output(" ".join(argv))
     log_to_output(f"CWD Server: {cwd}")
