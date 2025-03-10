@@ -3,7 +3,7 @@
 """
 Test for linting over LSP.
 """
-from threading import Event
+from threading import Event, Semaphore
 from typing import List
 
 import pytest
@@ -515,6 +515,127 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
         ]
         assert_that(actual, is_(expected))
 
+
+def test_custom_reporting_scope():
+    """Test reports are generated for files defined in the mypy configuration.
+    
+    We have  pyproject.toml in root folder, which sets only sample1/sample.py
+    to be checked. We open sample2.py, but expect diagnostics only for sample.py.
+    """
+    TEST_FILE2_PATH = constants.TEST_DATA / "sample1" / "sample2.py"
+    TEST_FILE2_URI = utils.as_uri(str(TEST_FILE2_PATH))
+    contents = TEST_FILE2_PATH.read_text(encoding="utf-8")
+
+    actual = []
+    with session.LspSession() as ls_session:
+        default_init = defaults.vscode_initialize_defaults()
+        default_init["rootPath"] = str(constants.TEST_DATA)
+        default_init["rootUri"]: utils.as_uri(str(constants.TEST_DATA))
+        default_init["workspaceFolders"][0]["uri"] = utils.as_uri(
+            str(constants.TEST_DATA)
+        )
+        init_options = default_init["initializationOptions"]
+        init_options["settings"][0]["reportingScope"] = "custom"
+        init_options["settings"][0]["workspace"] = utils.as_uri(
+            str(constants.TEST_DATA)
+        )
+        init_options["settings"][0]["cwd"] = str(constants.TEST_DATA)
+        ls_session.initialize(default_init)
+
+        diagnostics = Semaphore(0)
+
+        def _handler(params):
+            params["uri"] = utils.normalizecase(params["uri"])
+            actual.append(params)
+            diagnostics.release()
+
+        def _log_handler(params):
+            print(params)
+
+        ls_session.set_notification_callback(session.WINDOW_LOG_MESSAGE, _log_handler)
+        ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
+
+        ls_session.notify_did_open(
+            {
+                "textDocument": {
+                    "uri": TEST_FILE2_URI,
+                    "languageId": "python",
+                    "version": 1,
+                    "text": contents,
+                }
+            }
+        )
+
+        # Wait for the first diagnostic to come
+        assert diagnostics.acquire(timeout=TIMEOUT) is True
+        # After receiving a first diagnostic, we don't expect any more.
+        # Using a shorter timeout here, to avoid running test for too long.
+        # We know mypy has already started reporting diagnostics, so if there
+        # are any more, they should come pretty quick. 
+        assert diagnostics.acquire(timeout=3) is False
+
+        expected = [
+            {
+                "uri": TEST_FILE_URI,
+                "diagnostics": [
+                    {
+                        "range": {
+                            "start": {"line": 2, "character": 6},
+                            "end": {
+                                "line": 2,
+                                "character": 7,
+                            },
+                        },
+                        "message": 'Name "x" is not defined',
+                        "severity": 1,
+                        "code": "name-defined",
+                        "codeDescription": {
+                            "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-name-defined"
+                        },
+                        "source": "Mypy",
+                    },
+                    {
+                        "range": {
+                            "start": {"line": 6, "character": 21},
+                            "end": {
+                                "line": 6,
+                                "character": 33,
+                            },
+                        },
+                        "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                        "severity": 1,
+                        "code": "override",
+                        "codeDescription": {
+                            "href": "https://mypy.readthedocs.io/en/latest/_refs.html#code-override"
+                        },
+                        "source": "Mypy",
+                    },
+                    {
+                        "range": {
+                            "start": {"line": 6, "character": 21},
+                            "end": {
+                                "line": 6,
+                                "character": 33,
+                            },
+                        },
+                        "message": """This violates the Liskov substitution principle
+See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+It is recommended for "__eq__" to work with arbitrary objects, for example:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Foo):
+            return NotImplemented
+        return <logic to compare two Foo instances>""",
+                        "severity": 3,
+                        "code": "note",
+                        "codeDescription": {
+                            "href": "https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides"
+                        },
+                        "source": "Mypy",
+                    },
+                ],
+            }
+        ]
+        assert_that(actual, is_(expected))
 
 def test_file_with_no_errors_generates_empty_diagnostics():
     """Test that a file with no errors generates an empty diagnostics array. This ensures that errors are cleared out."""
