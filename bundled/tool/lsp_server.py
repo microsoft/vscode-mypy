@@ -719,7 +719,6 @@ def _run_tool_on_document(
         # Let mypy use files defined by the configuration
         pass
 
-
     log_to_output(" ".join(argv))
     log_to_output(f"CWD Server: {cwd}")
     result = utils.run_path(
