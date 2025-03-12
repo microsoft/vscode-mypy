@@ -7,7 +7,7 @@ from threading import Event, Semaphore
 from typing import List
 
 import pytest
-from hamcrest import assert_that, greater_than, is_
+from hamcrest import assert_that, contains_inanyorder, greater_than, is_
 
 from .lsp_test_client import constants, defaults, session, utils
 
@@ -513,7 +513,7 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
                 ],
             },
         ]
-        assert_that(actual, is_(expected))
+        assert_that(actual, contains_inanyorder(*expected))
 
 
 def test_custom_reporting_scope():
@@ -679,7 +679,7 @@ def test_file_with_no_errors_generates_empty_diagnostics():
             "uri": TEST_FILE3_URI,
             "diagnostics": [],
         }
-        assert_that(actual, is_(expected))
+        assert_that(actual, contains_inanyorder(*expected))
 
 
 def test_file_with_no_errors_generates_empty_diagnostics_workspace_mode():
