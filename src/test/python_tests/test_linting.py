@@ -637,6 +637,7 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
         ]
         assert_that(actual, is_(expected))
 
+
 def test_file_with_no_errors_generates_empty_diagnostics():
     """Test that a file with no errors generates an empty diagnostics array. This ensures that errors are cleared out."""
     TEST_FILE3_PATH = constants.TEST_DATA / "sample1" / "sample3.py"
