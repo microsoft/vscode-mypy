@@ -518,7 +518,7 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
 
 def test_custom_reporting_scope():
     """Test reports are generated for files defined in the mypy configuration.
-    
+
     We have  pyproject.toml in root folder, which sets only sample1/sample.py
     to be checked. We open sample2.py, but expect diagnostics only for sample.py.
     """
@@ -571,7 +571,7 @@ def test_custom_reporting_scope():
         # After receiving a first diagnostic, we don't expect any more.
         # Using a shorter timeout here, to avoid running test for too long.
         # We know mypy has already started reporting diagnostics, so if there
-        # are any more, they should come pretty quick. 
+        # are any more, they should come pretty quick.
         assert diagnostics.acquire(timeout=3) is False
 
         expected = [
