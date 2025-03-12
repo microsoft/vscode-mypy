@@ -1,0 +1,2 @@
+[tool.mypy]
+files = ["sample1/sample.py"]

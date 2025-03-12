@@ -143,18 +143,22 @@
                     "markdownDescription": "%settings.daemonStatusFile.description%",
                     "scope": "resource",
                     "type": "string",
-                    "tags": ["experimental"]
+                    "tags": [
+                        "experimental"
+                    ]
                 },
                 "mypy-type-checker.reportingScope": {
                     "default": "file",
                     "markdownDescription": "%settings.reportingScope.description%",
                     "enum": [
                         "file",
-                        "workspace"
+                        "workspace",
+                        "custom"
                     ],
                     "markdownEnumDescriptions": [
                         "%settings.reportingScope.file.description%",
-                        "%settings.reportingScope.workspace.description%"
+                        "%settings.reportingScope.workspace.description%",
+                        "%settings.reportingScope.custom.description%"
                     ],
                     "scope": "resource",
                     "type": "string",
