@@ -202,6 +202,7 @@ def _clear_diagnostics(document: workspace.Document) -> None:
 
 
 def _linting_helper(document: workspace.Document) -> None:
+    # pylint: disable=global-variable-not-assigned
     global _reported_file_paths
     try:
         extra_args = []
