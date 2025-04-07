@@ -211,7 +211,7 @@
         "@types/fs-extra": "^11.0.4",
         "@types/glob": "^8.1.0",
         "@types/mocha": "^10.0.6",
-        "@types/node": "16.x",
+        "@types/node": "20.x",
         "@types/sinon": "^17.0.3",
         "@types/vscode": "^1.74.0",
         "@typescript-eslint/eslint-plugin": "^6.19.0",
