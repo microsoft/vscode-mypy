@@ -659,7 +659,7 @@ def get_cwd(settings: Dict[str, Any], document: Optional[workspace.Document]) ->
         workspaceFolder = pathlib.Path(settings["workspaceFS"])
         candidate = pathlib.Path(document.path).parent
         # check if pyproject exists
-        check_for = ["pyproject.toml", "mypy.ini"]
+        check_for = ["mypy.ini", ".mypy.ini", "pyproject.toml", "setup.cfg"]
         # until we leave the workspace
         while candidate.is_relative_to(workspaceFolder):
             for n in check_for:
