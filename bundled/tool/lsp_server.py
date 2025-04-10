@@ -260,7 +260,7 @@ def _linting_helper(document: workspace.Document) -> None:
                     # an empty diagnostic is returned to clear any old errors out.
                     _clear_diagnostics(document)
 
-            if reportingScope == ("workspace", "custom"):
+            if reportingScope in ("workspace", "custom"):
                 for file_path in _reported_file_paths:
                     if file_path not in parse_results:
                         uri = uris.from_fs_path(file_path)
