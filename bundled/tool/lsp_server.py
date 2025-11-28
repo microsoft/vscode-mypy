@@ -235,10 +235,17 @@ def _linting_helper(document: workspace.Document) -> None:
             extra_args += ["--show-error-end"]
 
         result = _run_tool_on_document(document, extra_args=extra_args)
-        if result and result.stdout:
-            log_to_output(f"{document.uri} :\r\n{result.stdout}")
+        # Some mypy modes (e.g., non_interactive) emit diagnostics on stderr.
+        # Prefer parsing combined output so we don't miss errors when stdout is empty.
+        if result and (result.stdout or result.stderr):
+            combined_output = "\n".join(
+                [s for s in [result.stdout or "", result.stderr or ""] if s]
+            )
+            # Keep existing stdout logging for consistency; stderr is logged separately above.
+            if result.stdout:
+                log_to_output(f"{document.uri} :\r\n{result.stdout}")
             parse_results = _parse_output_using_regex(
-                result.stdout, settings["severity"]
+                combined_output, settings["severity"]
             )
             reportingScope = settings["reportingScope"]
             for file_path, diagnostics in parse_results.items():
