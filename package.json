@@ -217,13 +217,14 @@
     "dependencies": {
         "@vscode/python-extension": "^1.0.6",
         "fs-extra": "^11.3.1",
+        "minimatch": "^10.1.1",
         "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
         "@types/chai": "^4.3.11",
         "@types/fs-extra": "^11.0.4",
+        "@types/glob": "^9.0.0",
         "@types/mocha": "^10.0.6",
-        "@types/glob": "^7.2.0",
         "@types/node": "22.x",
         "@types/sinon": "^17.0.3",
         "@types/vscode": "^1.74.0",
