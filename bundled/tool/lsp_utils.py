@@ -74,7 +74,7 @@ def normalize_path(file_path: str) -> str:
 
 def is_same_path(file_path1: str, file_path2: str) -> bool:
     """Returns true if two paths are the same, resolving symlinks."""
-    return normalize_path(file_path1) == normalize_path(file_path2)
+    return pathlib.Path(file_path1).resolve() == pathlib.Path(file_path2).resolve()
 
 
 def absolute_path(file_path: str) -> str:
