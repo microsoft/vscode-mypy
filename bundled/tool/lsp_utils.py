@@ -68,8 +68,8 @@ _stdlib_paths = set(
 
 
 def is_same_path(file_path1: str, file_path2: str) -> bool:
-    """Returns true if two paths are the same."""
-    return pathlib.Path(file_path1) == pathlib.Path(file_path2)
+    """Returns true if two paths are the same, resolving symlinks."""
+    return pathlib.Path(file_path1).resolve() == pathlib.Path(file_path2).resolve()
 
 
 def normalize_path(file_path: str) -> str:
