@@ -8,9 +8,12 @@ import os
 import pathlib
 import sys
 import tempfile
+from threading import Event
 
 import pytest
-from hamcrest import assert_that, is_
+from hamcrest import assert_that, greater_than, is_
+
+from .lsp_test_client import session, utils
 
 # Add the bundled tool directory to sys.path for importing lsp_utils
 BUNDLED_TOOL_DIR = (
@@ -19,6 +22,8 @@ BUNDLED_TOOL_DIR = (
 sys.path.insert(0, str(BUNDLED_TOOL_DIR))
 
 import lsp_utils  # noqa: E402
+
+TIMEOUT = 30  # 30 seconds
 
 
 @pytest.mark.skipif(
@@ -85,3 +90,67 @@ def test_is_same_path_same_file():
 
         # Same path should be equal
         assert_that(lsp_utils.is_same_path(str(test_file), str(test_file)), is_(True))
+
+
+@pytest.mark.skipif(
+    not hasattr(os, "symlink"),
+    reason="os.symlink not available on this platform",
+)
+def test_symlink_file_diagnostics():
+    """Test that type errors in a file accessed via symlink are caught."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create real directory structure
+        real_dir = pathlib.Path(tmpdir) / "real_dir"
+        real_dir.mkdir()
+
+        # Create a test file with a type error
+        test_file = real_dir / "type_error.py"
+        test_file.write_text('a: int = 3\na = "hello"\n', encoding="utf-8")
+
+        # Create a symlink to the real directory
+        symlink_dir = pathlib.Path(tmpdir) / "symlink_dir"
+        try:
+            symlink_dir.symlink_to(real_dir)
+        except OSError:
+            pytest.skip("Unable to create symlink (may require elevated privileges)")
+
+        # Path through symlink (what VSCode would send)
+        symlink_file_path = symlink_dir / "type_error.py"
+        symlink_file_uri = utils.as_uri(str(symlink_file_path))
+
+        contents = symlink_file_path.read_text(encoding="utf-8")
+
+        actual = {}
+        with session.LspSession(cwd=str(symlink_dir)) as ls_session:
+            ls_session.initialize()
+
+            done = Event()
+
+            def _handler(params):
+                nonlocal actual
+                actual = params
+                done.set()
+
+            ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _handler)
+
+            ls_session.notify_did_open(
+                {
+                    "textDocument": {
+                        "uri": symlink_file_uri,
+                        "languageId": "python",
+                        "version": 1,
+                        "text": contents,
+                    }
+                }
+            )
+
+            # Wait for diagnostics
+            assert done.wait(TIMEOUT), "Timed out waiting for diagnostics"
+
+        # Verify diagnostics were received
+        assert_that(len(actual.get("diagnostics", [])), greater_than(0))
+
+        # Verify at least one diagnostic mentions the type error (incompatible types)
+        messages = [d.get("message", "") for d in actual.get("diagnostics", [])]
+        has_type_error = any("Incompatible types" in msg for msg in messages)
+        assert_that(has_type_error, is_(True))
