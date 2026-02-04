@@ -67,14 +67,14 @@ _stdlib_paths = set(
 )
 
 
-def is_same_path(file_path1: str, file_path2: str) -> bool:
-    """Returns true if two paths are the same."""
-    return pathlib.Path(file_path1) == pathlib.Path(file_path2)
-
-
 def normalize_path(file_path: str) -> str:
     """Returns normalized path."""
     return str(pathlib.Path(file_path).resolve())
+
+
+def is_same_path(file_path1: str, file_path2: str) -> bool:
+    """Returns true if two paths are the same, resolving symlinks."""
+    return pathlib.Path(file_path1).resolve() == pathlib.Path(file_path2).resolve()
 
 
 def absolute_path(file_path: str) -> str:
@@ -82,7 +82,7 @@ def absolute_path(file_path: str) -> str:
     return str(pathlib.Path(file_path).absolute())
 
 
-def is_current_interpreter(executable) -> bool:
+def is_current_interpreter(executable: str) -> bool:
     """Returns true if the executable path is same as the current interpreter."""
     return is_same_path(executable, sys.executable)
 
