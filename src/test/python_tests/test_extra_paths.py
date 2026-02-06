@@ -3,6 +3,7 @@
 """
 Test for extra paths settings.
 """
+
 from threading import Event
 from typing import Dict
 

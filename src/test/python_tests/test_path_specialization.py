@@ -3,6 +3,7 @@
 """
 Test for path and interpreter settings.
 """
+
 import sys
 from threading import Event
 from typing import Dict

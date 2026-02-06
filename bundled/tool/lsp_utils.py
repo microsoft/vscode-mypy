@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 """Utility functions and classes for use with running tools over LSP."""
+
 from __future__ import annotations
 
 import contextlib
@@ -8,6 +9,7 @@ import fnmatch
 import io
 import os
 import pathlib
+import re
 import runpy
 import site
 import subprocess
@@ -24,6 +26,16 @@ SEE_HREF_PREFIX = "See https://mypy.readthedocs.io"
 SEE_PREFIX_LEN = len("See ")
 NOTE_CODE = "note"
 LINE_OFFSET = CHAR_OFFSET = 1
+
+# Regex pattern to parse mypy diagnostic output lines.
+# Format: filepath:line[:char][:end_line:end_char]: type: message  [code]
+# Example: /path/to/file.py:14:16:19:5: error: Value of type variable...  [type-var]
+# Key features:
+# - (?:\s{2}\[(?P<code>[\w-]+)\])? - Optional error code with double-space separator
+# - \s*$ - Tolerates trailing whitespace (spaces, tabs, etc.)
+DIAGNOSTIC_RE = re.compile(
+    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+)(?::(?P<char>\d+))?(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:\s{2}\[(?P<code>[\w-]+)\])?\s*$"
+)
 
 
 def as_list(content: Union[Any, List[Any], Tuple[Any]]) -> List[Any]:

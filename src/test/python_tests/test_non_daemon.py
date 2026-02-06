@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 """Tests for non-daemon mode"""
+
 from threading import Event
 from typing import Any, Dict, List
 
