@@ -5,9 +5,7 @@ Unit tests for diagnostic regex parsing in lsp_server.
 """
 
 import pathlib
-import re
 import sys
-
 
 # Add the bundled tool directory to sys.path for importing lsp_utils
 BUNDLED_TOOL_DIR = (
@@ -15,6 +13,7 @@ BUNDLED_TOOL_DIR = (
 )
 sys.path.insert(0, str(BUNDLED_TOOL_DIR))
 from lsp_utils import DIAGNOSTIC_RE  # noqa: E402
+
 
 def _get_group_dict(line: str):
     """Helper function to get match groups from a line."""
