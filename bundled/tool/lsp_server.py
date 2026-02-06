@@ -282,7 +282,7 @@ def _linting_helper(document: workspace.Document) -> None:
 
 
 DIAGNOSTIC_RE = re.compile(
-    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+)(?::(?P<char>\d+))?(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:  )?(?:\[(?P<code>[\w-]+)\])?$"
+    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+)(?::(?P<char>\d+))?(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:\s{2}\[(?P<code>[\w-]+)\])?\s*$"
 )
 
 
@@ -307,7 +307,7 @@ def _parse_output_using_regex(
         if line.startswith("'") and line.endswith("'"):
             line = line[1:-1]
 
-        data = _get_group_dict(line)
+        data = _get_group_dict(line.strip())
 
         if not data:
             continue
