@@ -281,7 +281,13 @@ def _linting_helper(document: workspace.Document) -> None:
         )
     return []
 
-
+# Regex to match mypy diagnostic output lines in the format:
+# filepath:line[:column[:end_line:end_char]]: type: message  [error-code]
+# Examples:
+#   /path/to/file.py:10:5:10:15: error: Incompatible types  [assignment]
+#   /path/to/file.py:10: note: See https://mypy.readthedocs.io/...
+# Groups captured: filepath, line, char (optional), end_line (optional),
+# end_char (optional), type, message, and code (optional, in square brackets).
 DIAGNOSTIC_RE = re.compile(
     r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+)(?::(?P<char>\d+))?(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:\s{2}\[(?P<code>[\w-]+)\])?\s*$"
 )

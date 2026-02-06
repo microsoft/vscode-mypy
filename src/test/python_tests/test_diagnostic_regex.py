@@ -5,14 +5,7 @@ Unit tests for diagnostic regex parsing in lsp_server.
 """
 
 import re
-
-# NOTE: This regex pattern is duplicated from bundled/tool/lsp_server.py
-# to allow for isolated unit testing without needing to import the entire
-# lsp_server module (which has dependencies on lsprotocol and other modules).
-# If the pattern in lsp_server.py is updated, this must be updated as well.
-DIAGNOSTIC_RE = re.compile(
-    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+)(?::(?P<char>\d+))?(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:\s{2}\[(?P<code>[\w-]+)\])?\s*$"
-)
+from bundled.tool.lsp_server import DIAGNOSTIC_RE
 
 
 def _get_group_dict(line: str):
