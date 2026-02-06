@@ -308,6 +308,8 @@ def _parse_output_using_regex(
         if line.startswith("'") and line.endswith("'"):
             line = line[1:-1]
 
+        # Defensive: strip whitespace before matching, even though the regex
+        # handles trailing whitespace with \s*$. This provides extra robustness.
         data = _get_group_dict(line.strip())
 
         if not data:
