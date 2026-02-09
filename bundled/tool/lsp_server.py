@@ -1,13 +1,13 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 """Implementation of tool support over LSP."""
+
 from __future__ import annotations
 
 import copy
 import json
 import os
 import pathlib
-import re
 import sys
 import sysconfig
 import tempfile
@@ -281,13 +281,8 @@ def _linting_helper(document: workspace.Document) -> None:
     return []
 
 
-DIAGNOSTIC_RE = re.compile(
-    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+)(?::(?P<char>\d+))?(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:  )?(?:\[(?P<code>[\w-]+)\])?$"
-)
-
-
 def _get_group_dict(line: str) -> Optional[Dict[str, str | None]]:
-    match = DIAGNOSTIC_RE.match(line)
+    match = utils.DIAGNOSTIC_RE.match(line)
     if match:
         return match.groupdict()
 
@@ -307,7 +302,9 @@ def _parse_output_using_regex(
         if line.startswith("'") and line.endswith("'"):
             line = line[1:-1]
 
-        data = _get_group_dict(line)
+        # Defensive: strip whitespace before matching, even though the regex
+        # handles trailing whitespace with \s*$. This provides extra robustness.
+        data = _get_group_dict(line.strip())
 
         if not data:
             continue

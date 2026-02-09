@@ -3,6 +3,7 @@
 """
 Test for linting over LSP.
 """
+
 from threading import Event, Semaphore
 from typing import List
 
