@@ -124,7 +124,12 @@ def is_match(patterns: List[str], file_path: str, workspace_root: str) -> bool:
     if not patterns:
         return False
     relative_path = _get_relative_path(file_path, workspace_root)
-    return any(fnmatch.fnmatch(relative_path, pattern) for pattern in patterns)
+    file_name = os.path.basename(file_path)
+    return any(
+        fnmatch.fnmatch(relative_path, pattern)
+        or (not pattern.startswith("/") and fnmatch.fnmatch(file_name, pattern))
+        for pattern in patterns
+    )
 
 
 # pylint: disable-next=too-few-public-methods
