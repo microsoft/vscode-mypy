@@ -112,11 +112,11 @@ def _get_relative_path(file_path: str, workspace_root: str) -> str:
     the paths are on different drives (Windows).
     """
     if not workspace_root:
-        return file_path
+        return pathlib.Path(file_path).as_posix()
     try:
         return pathlib.Path(file_path).relative_to(workspace_root).as_posix()
     except ValueError:
-        return file_path
+        return pathlib.Path(file_path).as_posix()
 
 
 def is_match(patterns: List[str], file_path: str, workspace_root: str) -> bool:
@@ -124,7 +124,7 @@ def is_match(patterns: List[str], file_path: str, workspace_root: str) -> bool:
     if not patterns:
         return False
     relative_path = _get_relative_path(file_path, workspace_root)
-    file_name = os.path.basename(file_path)
+    file_name = pathlib.Path(file_path).name
     return any(
         fnmatch.fnmatch(relative_path, pattern)
         or (not pattern.startswith("/") and fnmatch.fnmatch(file_name, pattern))
