@@ -75,9 +75,7 @@ WORKSPACE_SETTINGS = {}
 GLOBAL_SETTINGS = {}
 
 MAX_WORKERS = 5
-LSP_SERVER = LanguageServer(
-    name="Mypy", version="v0.1.0", max_workers=MAX_WORKERS
-)
+LSP_SERVER = LanguageServer(name="Mypy", version="v0.1.0", max_workers=MAX_WORKERS)
 
 DMYPY_ARGS = {}
 DMYPY_STATUS_FILE_ROOT = None
@@ -259,7 +257,9 @@ def _linting_helper(document: TextDocument) -> None:
                 # documents; this is fine/correct, we just need to account for it).
                 if reportingScope == "file" and is_file_same_as_document:
                     LSP_SERVER.text_document_publish_diagnostics(
-                        lsp.PublishDiagnosticsParams(uri=document.uri, diagnostics=diagnostics)
+                        lsp.PublishDiagnosticsParams(
+                            uri=document.uri, diagnostics=diagnostics
+                        )
                     )
                 elif reportingScope in ("workspace", "custom"):
                     _reported_file_paths.add(file_path)
@@ -786,21 +786,33 @@ def log_to_output(
 
 
 def log_error(message: str) -> None:
-    LSP_SERVER.window_log_message(lsp.LogMessageParams(type=lsp.MessageType.Error, message=message))
+    LSP_SERVER.window_log_message(
+        lsp.LogMessageParams(type=lsp.MessageType.Error, message=message)
+    )
     if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["onError", "onWarning", "always"]:
-        LSP_SERVER.window_show_message(lsp.ShowMessageParams(type=lsp.MessageType.Error, message=message))
+        LSP_SERVER.window_show_message(
+            lsp.ShowMessageParams(type=lsp.MessageType.Error, message=message)
+        )
 
 
 def log_warning(message: str) -> None:
-    LSP_SERVER.window_log_message(lsp.LogMessageParams(type=lsp.MessageType.Warning, message=message))
+    LSP_SERVER.window_log_message(
+        lsp.LogMessageParams(type=lsp.MessageType.Warning, message=message)
+    )
     if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["onWarning", "always"]:
-        LSP_SERVER.window_show_message(lsp.ShowMessageParams(type=lsp.MessageType.Warning, message=message))
+        LSP_SERVER.window_show_message(
+            lsp.ShowMessageParams(type=lsp.MessageType.Warning, message=message)
+        )
 
 
 def log_always(message: str) -> None:
-    LSP_SERVER.window_log_message(lsp.LogMessageParams(type=lsp.MessageType.Info, message=message))
+    LSP_SERVER.window_log_message(
+        lsp.LogMessageParams(type=lsp.MessageType.Info, message=message)
+    )
     if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["always"]:
-        LSP_SERVER.window_show_message(lsp.ShowMessageParams(type=lsp.MessageType.Info, message=message))
+        LSP_SERVER.window_show_message(
+            lsp.ShowMessageParams(type=lsp.MessageType.Info, message=message)
+        )
 
 
 # *****************************************************
