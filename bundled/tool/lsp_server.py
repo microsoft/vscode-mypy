@@ -67,8 +67,8 @@ import lsp_utils as utils
 import lsprotocol.types as lsp
 from packaging.version import Version
 from packaging.version import parse as parse_version
-from pygls.lsp.server import LanguageServer
 from pygls import uris
+from pygls.lsp.server import LanguageServer
 from pygls.workspace import TextDocument
 
 WORKSPACE_SETTINGS = {}
