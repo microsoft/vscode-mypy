@@ -105,11 +105,31 @@ def is_stdlib_file(file_path: str) -> bool:
     return any(normalized_path.startswith(path) for path in _stdlib_paths)
 
 
-def is_match(patterns: List[str], file_path: str) -> bool:
+def _get_relative_path(file_path: str, workspace_root: str) -> str:
+    """Returns the file path relative to the workspace root.
+
+    Falls back to the original path if the workspace root is empty or
+    the paths are on different drives (Windows).
+    """
+    if not workspace_root:
+        return pathlib.Path(file_path).as_posix()
+    try:
+        return pathlib.Path(file_path).relative_to(workspace_root).as_posix()
+    except ValueError:
+        return pathlib.Path(file_path).as_posix()
+
+
+def is_match(patterns: List[str], file_path: str, workspace_root: str) -> bool:
     """Returns true if the file matches one of the fnmatch patterns."""
     if not patterns:
         return False
-    return any(fnmatch.fnmatch(file_path, pattern) for pattern in patterns)
+    relative_path = _get_relative_path(file_path, workspace_root)
+    file_name = pathlib.Path(file_path).name
+    return any(
+        fnmatch.fnmatch(relative_path, pattern)
+        or (not pattern.startswith("/") and fnmatch.fnmatch(file_name, pattern))
+        for pattern in patterns
+    )
 
 
 # pylint: disable-next=too-few-public-methods

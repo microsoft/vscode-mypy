@@ -828,6 +828,7 @@ It is recommended for "__eq__" to work with arbitrary objects, for example:
         ["**/sample*.py"],
         ["**/test_data/**/*.py"],
         ["**/sample*.py", "**/something*.py"],
+        ["sample.py"],
     ],
 )
 def test_ignore_patterns_match(patterns: List[str]):
