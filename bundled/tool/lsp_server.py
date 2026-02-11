@@ -67,13 +67,15 @@ import lsp_utils as utils
 import lsprotocol.types as lsp
 from packaging.version import Version
 from packaging.version import parse as parse_version
-from pygls import server, uris, workspace
+from pygls.lsp.server import LanguageServer
+from pygls import uris
+from pygls.workspace import TextDocument
 
 WORKSPACE_SETTINGS = {}
 GLOBAL_SETTINGS = {}
 
 MAX_WORKERS = 5
-LSP_SERVER = server.LanguageServer(
+LSP_SERVER = LanguageServer(
     name="Mypy", version="v0.1.0", max_workers=MAX_WORKERS
 )
 
@@ -162,21 +164,21 @@ def _run_unidentified_tool(
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_OPEN)
 def did_open(params: lsp.DidOpenTextDocumentParams) -> None:
     """LSP handler for textDocument/didOpen request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     _linting_helper(document)
 
 
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
 def did_save(params: lsp.DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     _linting_helper(document)
 
 
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_CLOSE)
 def did_close(params: lsp.DidCloseTextDocumentParams) -> None:
     """LSP handler for textDocument/didClose request."""
-    document = LSP_SERVER.workspace.get_document(params.text_document.uri)
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
     settings = _get_settings_by_document(document)
     if settings["reportingScope"] == "file":
         # Publishing empty diagnostics to clear the entries for this file.
@@ -197,11 +199,13 @@ def _is_empty_diagnostics(
 _reported_file_paths = set()
 
 
-def _clear_diagnostics(document: workspace.Document) -> None:
-    LSP_SERVER.publish_diagnostics(document.uri, [])
+def _clear_diagnostics(document: TextDocument) -> None:
+    LSP_SERVER.text_document_publish_diagnostics(
+        lsp.PublishDiagnosticsParams(uri=document.uri, diagnostics=[])
+    )
 
 
-def _linting_helper(document: workspace.Document) -> None:
+def _linting_helper(document: TextDocument) -> None:
     try:
         extra_args = []
 
@@ -254,11 +258,15 @@ def _linting_helper(document: workspace.Document) -> None:
                 # (mypy will follow imports, so may include errors found in other
                 # documents; this is fine/correct, we just need to account for it).
                 if reportingScope == "file" and is_file_same_as_document:
-                    LSP_SERVER.publish_diagnostics(document.uri, diagnostics)
+                    LSP_SERVER.text_document_publish_diagnostics(
+                        lsp.PublishDiagnosticsParams(uri=document.uri, diagnostics=diagnostics)
+                    )
                 elif reportingScope in ("workspace", "custom"):
                     _reported_file_paths.add(file_path)
                     uri = uris.from_fs_path(file_path)
-                    LSP_SERVER.publish_diagnostics(uri, diagnostics)
+                    LSP_SERVER.text_document_publish_diagnostics(
+                        lsp.PublishDiagnosticsParams(uri=uri, diagnostics=diagnostics)
+                    )
 
             if reportingScope == "file":
                 if _is_empty_diagnostics(document.path, parse_results):
@@ -270,13 +278,17 @@ def _linting_helper(document: workspace.Document) -> None:
                 for file_path in _reported_file_paths:
                     if file_path not in parse_results:
                         uri = uris.from_fs_path(file_path)
-                        LSP_SERVER.publish_diagnostics(uri, [])
+                        LSP_SERVER.text_document_publish_diagnostics(
+                            lsp.PublishDiagnosticsParams(uri=uri, diagnostics=[])
+                        )
         else:
             _clear_diagnostics(document)
     except Exception:
-        LSP_SERVER.show_message_log(
-            f"Linting failed with error:\r\n{traceback.format_exc()}",
-            lsp.MessageType.Error,
+        LSP_SERVER.window_log_message(
+            lsp.LogMessageParams(
+                type=lsp.MessageType.Error,
+                message=f"Linting failed with error:\r\n{traceback.format_exc()}",
+            )
         )
     return []
 
@@ -540,7 +552,7 @@ def _get_settings_by_path(file_path: pathlib.Path):
     return setting_values[0]
 
 
-def _get_document_key(document: workspace.Document):
+def _get_document_key(document: TextDocument):
     if WORKSPACE_SETTINGS:
         document_workspace = pathlib.Path(document.path)
         workspaces = {s["workspaceFS"] for s in WORKSPACE_SETTINGS.values()}
@@ -555,7 +567,7 @@ def _get_document_key(document: workspace.Document):
     return None
 
 
-def _get_settings_by_document(document: workspace.Document | None):
+def _get_settings_by_document(document: TextDocument | None):
     if document is None or document.path is None:
         return list(WORKSPACE_SETTINGS.values())[0]
 
@@ -647,7 +659,7 @@ def _get_env_vars(settings: Dict[str, Any]) -> Dict[str, str]:
     return new_env
 
 
-def get_cwd(settings: Dict[str, Any], document: Optional[workspace.Document]) -> str:
+def get_cwd(settings: Dict[str, Any], document: Optional[TextDocument]) -> str:
     """Returns cwd for the given settings and document."""
     # this happens when running dmypy.
     if document is None:
@@ -687,7 +699,7 @@ def get_cwd(settings: Dict[str, Any], document: Optional[workspace.Document]) ->
 
 
 def _run_tool_on_document(
-    document: workspace.Document,
+    document: TextDocument,
     extra_args: Sequence[str] = None,
 ) -> utils.RunResult | None:
     """Runs tool on the given document.
@@ -770,25 +782,25 @@ def _run_dmypy_command(
 def log_to_output(
     message: str, msg_type: lsp.MessageType = lsp.MessageType.Log
 ) -> None:
-    LSP_SERVER.show_message_log(message, msg_type)
+    LSP_SERVER.window_log_message(lsp.LogMessageParams(type=msg_type, message=message))
 
 
 def log_error(message: str) -> None:
-    LSP_SERVER.show_message_log(message, lsp.MessageType.Error)
+    LSP_SERVER.window_log_message(lsp.LogMessageParams(type=lsp.MessageType.Error, message=message))
     if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["onError", "onWarning", "always"]:
-        LSP_SERVER.show_message(message, lsp.MessageType.Error)
+        LSP_SERVER.window_show_message(lsp.ShowMessageParams(type=lsp.MessageType.Error, message=message))
 
 
 def log_warning(message: str) -> None:
-    LSP_SERVER.show_message_log(message, lsp.MessageType.Warning)
+    LSP_SERVER.window_log_message(lsp.LogMessageParams(type=lsp.MessageType.Warning, message=message))
     if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["onWarning", "always"]:
-        LSP_SERVER.show_message(message, lsp.MessageType.Warning)
+        LSP_SERVER.window_show_message(lsp.ShowMessageParams(type=lsp.MessageType.Warning, message=message))
 
 
 def log_always(message: str) -> None:
-    LSP_SERVER.show_message_log(message, lsp.MessageType.Info)
+    LSP_SERVER.window_log_message(lsp.LogMessageParams(type=lsp.MessageType.Info, message=message))
     if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["always"]:
-        LSP_SERVER.show_message(message, lsp.MessageType.Info)
+        LSP_SERVER.window_show_message(lsp.ShowMessageParams(type=lsp.MessageType.Info, message=message))
 
 
 # *****************************************************

@@ -6,6 +6,6 @@
 # uv pip compile --generate-hashes --upgrade -o ./requirements.txt ./requirements.in
 
 # Required packages
-pygls
+pygls>=2
 packaging
 mypy
