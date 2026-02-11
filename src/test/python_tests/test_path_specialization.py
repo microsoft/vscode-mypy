@@ -101,7 +101,9 @@ def test_path():
 def test_interpreter():
     """Test linting using specific python path."""
     default_init = defaults.vscode_initialize_defaults()
-    default_init["initializationOptions"]["settings"][0]["interpreter"] = [sys.executable]
+    default_init["initializationOptions"]["settings"][0]["interpreter"] = [
+        sys.executable
+    ]
 
     argv_callback_object = CallbackObject()
     contents = TEST_FILE_PATH.read_text(encoding="utf-8")

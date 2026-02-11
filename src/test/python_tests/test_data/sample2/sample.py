@@ -1,1 +1,1 @@
-1  # type:ignore[misc]
+1  # type: ignore[misc]
