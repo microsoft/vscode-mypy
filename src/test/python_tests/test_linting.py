@@ -84,7 +84,7 @@ def test_publish_diagnostics_on_open():
                         "character": 33,
                     },
                 },
-                "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                "message": 'Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"',
                 "severity": 1,
                 "code": "override",
                 "codeDescription": {
@@ -182,7 +182,7 @@ def test_publish_diagnostics_on_save():
                         "character": 33,
                     },
                 },
-                "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                "message": 'Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"',
                 "severity": 1,
                 "code": "override",
                 "codeDescription": {
@@ -346,7 +346,7 @@ def test_severity_setting(lint_code):
                         "character": 33,
                     },
                 },
-                "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                "message": 'Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"',
                 "severity": 1,
                 "code": "override",
                 "codeDescription": {
@@ -460,7 +460,7 @@ def test_workspace_reporting_scope():
                                 "character": 33,
                             },
                         },
-                        "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                        "message": 'Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"',
                         "severity": 1,
                         "code": "override",
                         "codeDescription": {
@@ -603,7 +603,7 @@ def test_custom_reporting_scope():
                                 "character": 33,
                             },
                         },
-                        "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                        "message": 'Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"',
                         "severity": 1,
                         "code": "override",
                         "codeDescription": {
@@ -763,7 +763,7 @@ def test_file_with_no_errors_generates_empty_diagnostics_workspace_mode():
                                 "character": 33,
                             },
                         },
-                        "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                        "message": 'Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"',
                         "severity": 1,
                         "code": "override",
                         "codeDescription": {
@@ -942,7 +942,7 @@ def test_ignore_patterns_no_match(patterns: List[str]):
                         "character": 33,
                     },
                 },
-                "message": 'Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"',
+                "message": 'Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"',
                 "severity": 1,
                 "code": "override",
                 "codeDescription": {
