@@ -162,9 +162,12 @@ class LspSession:
         fut = Future()
 
         def _handler():
-            callback = self.get_notification_callback(notification_name)
-            callback(params)
-            fut.set_result(None)
+            try:
+                callback = self.get_notification_callback(notification_name)
+                callback(params)
+                fut.set_result(None)
+            except Exception as e:  # pylint: disable=broad-except
+                fut.set_exception(e)
 
         self._thread_pool.submit(_handler)
         return fut
