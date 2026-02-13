@@ -6,7 +6,6 @@ LSP session client for testing.
 
 import json
 import os
-import re
 import subprocess
 import sys
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -48,35 +47,38 @@ class JsonRpcReader:
 
     def listen(self, callback):
         """Read messages and call callback for each parsed message."""
-        while True:
-            # Read headers
-            headers = {}
+        try:
             while True:
-                line = self._stream.readline()
-                if not line:
+                # Read headers
+                headers = {}
+                while True:
+                    line = self._stream.readline()
+                    if not line:
+                        return  # EOF
+                    line = line.strip()
+                    if not line:
+                        break  # Empty line signals end of headers
+                    if b':' in line:
+                        key, value = line.split(b':', 1)
+                        headers[key.strip().decode('ascii')] = value.strip().decode('ascii')
+
+                if 'Content-Length' not in headers:
+                    continue
+
+                # Read body
+                content_length = int(headers['Content-Length'])
+                body = self._stream.read(content_length)
+                if not body:
                     return  # EOF
-                line = line.strip()
-                if not line:
-                    break  # Empty line signals end of headers
-                if b':' in line:
-                    key, value = line.split(b':', 1)
-                    headers[key.strip().decode('ascii')] = value.strip().decode('ascii')
 
-            if 'Content-Length' not in headers:
-                continue
-
-            # Read body
-            content_length = int(headers['Content-Length'])
-            body = self._stream.read(content_length)
-            if not body:
-                return  # EOF
-
-            # Parse and dispatch
-            try:
-                message = json.loads(body.decode('utf-8'))
-                callback(message)
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                pass  # Ignore malformed messages
+                # Parse and dispatch
+                try:
+                    message = json.loads(body.decode('utf-8'))
+                    callback(message)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    pass  # Ignore malformed messages
+        except (IOError, OSError):
+            return  # Stream error, exit gracefully
 
 
 # pylint: disable=too-many-instance-attributes
@@ -212,7 +214,9 @@ class LspSession:
     def exit_lsp(self, exit_timeout=LSP_EXIT_TIMEOUT):
         """Handles LSP server process exit."""
         self._send_notification("exit")
-        assert self._sub.wait(exit_timeout) == 0
+        # Convert timeout from milliseconds to seconds for subprocess.wait()
+        timeout_seconds = exit_timeout / 1000
+        assert self._sub.wait(timeout_seconds) == 0
 
     def notify_did_change(self, did_change_params):
         """Sends did change notification to LSP Server."""
