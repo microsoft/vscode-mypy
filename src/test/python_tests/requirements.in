@@ -1,5 +1,5 @@
 # This file is used to generate ./src/test/python_tests/requirements.txt.
-# Use `uv` with Python 3.10 when creating the environment.
+# Use `uv` with Python 3.9 when creating the environment.
 #
 # Run following command:
 # uv pip compile --generate-hashes --upgrade -o ./src/test/python_tests/requirements.txt ./src/test/python_tests/requirements.in
