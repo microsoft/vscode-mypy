@@ -66,7 +66,7 @@ extends:
                 displayName: Select Node 22 LTS
               - task: UsePythonVersion@0
                 inputs:
-                  versionSpec: '3.10' # note Install Python dependencies step below relies on Python 3.10
+                  versionSpec: '3.9' # note Install Python dependencies step below relies on Python 3.9
                   addToPath: true
                   architecture: 'x64'
                 displayName: Select Python version
