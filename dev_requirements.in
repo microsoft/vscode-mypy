@@ -1,5 +1,5 @@
 # This file has packages used when developing this extension.
-# Use `uv` with Python 3.9 when creating the environment.
+# Use `uv` with Python 3.10 when creating the environment.
 #
 # Run following command:
 # uv pip compile --generate-hashes --upgrade -o ./dev_requirements.txt ./dev_requirements.in
