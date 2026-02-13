@@ -6,6 +6,9 @@ trigger: none
 #     include: ['*']
 pr: none
 
+variables:
+  PYTHON_VERSION: '3.10'  # Minimum supported version
+
 resources:
   repositories:
     - repository: templates
@@ -33,7 +36,7 @@ extends:
 
       - task: UsePythonVersion@0
         inputs:
-          versionSpec: '3.10'
+          versionSpec: $(PYTHON_VERSION)
           addToPath: true
           architecture: 'x64'
         displayName: Select Python version
