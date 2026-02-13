@@ -7,5 +7,4 @@
 # Packages needed by the testing framework.
 pytest
 PyHamcrest
-python-jsonrpc-server
 colorama # required for windows machines

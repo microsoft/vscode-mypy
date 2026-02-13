@@ -4,15 +4,13 @@
 LSP session client for testing.
 """
 
+import json
 import os
+import re
 import subprocess
 import sys
 from concurrent.futures import Future, ThreadPoolExecutor
-from threading import Event
-
-from pyls_jsonrpc.dispatchers import MethodDispatcher
-from pyls_jsonrpc.endpoint import Endpoint
-from pyls_jsonrpc.streams import JsonRpcStreamReader, JsonRpcStreamWriter
+from threading import Event, Lock
 
 from . import defaults
 from .constants import PROJECT_ROOT
@@ -25,8 +23,64 @@ WINDOW_LOG_MESSAGE = "window/logMessage"
 WINDOW_SHOW_MESSAGE = "window/showMessage"
 
 
+class JsonRpcWriter:
+    """Writes JSON-RPC messages with Content-Length headers to a binary stream."""
+
+    def __init__(self, stream):
+        self._stream = stream
+        self._lock = Lock()
+
+    def write(self, message):
+        """Write a JSON-RPC message with Content-Length header."""
+        body = json.dumps(message, separators=(',', ':')).encode('utf-8')
+        header = f"Content-Length: {len(body)}\r\n\r\n".encode('ascii')
+        with self._lock:
+            self._stream.write(header)
+            self._stream.write(body)
+            self._stream.flush()
+
+
+class JsonRpcReader:
+    """Reads Content-Length framed JSON-RPC messages from a binary stream."""
+
+    def __init__(self, stream):
+        self._stream = stream
+
+    def listen(self, callback):
+        """Read messages and call callback for each parsed message."""
+        while True:
+            # Read headers
+            headers = {}
+            while True:
+                line = self._stream.readline()
+                if not line:
+                    return  # EOF
+                line = line.strip()
+                if not line:
+                    break  # Empty line signals end of headers
+                if b':' in line:
+                    key, value = line.split(b':', 1)
+                    headers[key.strip().decode('ascii')] = value.strip().decode('ascii')
+
+            if 'Content-Length' not in headers:
+                continue
+
+            # Read body
+            content_length = int(headers['Content-Length'])
+            body = self._stream.read(content_length)
+            if not body:
+                return  # EOF
+
+            # Parse and dispatch
+            try:
+                message = json.loads(body.decode('utf-8'))
+                callback(message)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                pass  # Ignore malformed messages
+
+
 # pylint: disable=too-many-instance-attributes
-class LspSession(MethodDispatcher):
+class LspSession:
     """Send and Receive messages over LSP as a test LS Client."""
 
     def __init__(self, cwd=None, script=None):
@@ -36,8 +90,10 @@ class LspSession(MethodDispatcher):
         self._sub = None
         self._writer = None
         self._reader = None
-        self._endpoint = None
         self._notification_callbacks = {}
+        self._request_futures = {}
+        self._request_id = 0
+        self._request_id_lock = Lock()
         self.script = (
             script if script else (PROJECT_ROOT / "bundled" / "tool" / "lsp_server.py")
         )
@@ -58,16 +114,9 @@ class LspSession(MethodDispatcher):
             shell="WITH_COVERAGE" in os.environ,
         )
 
-        self._writer = JsonRpcStreamWriter(os.fdopen(self._sub.stdin.fileno(), "wb"))
-        self._reader = JsonRpcStreamReader(os.fdopen(self._sub.stdout.fileno(), "rb"))
-
-        dispatcher = {
-            PUBLISH_DIAGNOSTICS: self._publish_diagnostics,
-            WINDOW_SHOW_MESSAGE: self._window_show_message,
-            WINDOW_LOG_MESSAGE: self._window_log_message,
-        }
-        self._endpoint = Endpoint(dispatcher, self._writer.write)
-        self._thread_pool.submit(self._reader.listen, self._endpoint.consume)
+        self._writer = JsonRpcWriter(os.fdopen(self._sub.stdin.fileno(), "wb"))
+        self._reader = JsonRpcReader(os.fdopen(self._sub.stdout.fileno(), "rb"))
+        self._thread_pool.submit(self._reader.listen, self._handle_message)
         return self
 
     def __exit__(self, typ, value, _tb):
@@ -76,8 +125,47 @@ class LspSession(MethodDispatcher):
             self._sub.terminate()
         except Exception:  # pylint:disable=broad-except
             pass
-        self._endpoint.shutdown()
         self._thread_pool.shutdown()
+
+    def _next_id(self):
+        """Generate next request ID."""
+        with self._request_id_lock:
+            self._request_id += 1
+            return self._request_id
+
+    def _handle_message(self, message):
+        """Route incoming JSON-RPC messages."""
+        if "id" in message and "method" not in message:
+            # Response
+            msg_id = message["id"]
+            if msg_id in self._request_futures:
+                fut = self._request_futures.pop(msg_id)
+                if "error" in message:
+                    fut.set_exception(Exception(str(message["error"])))
+                else:
+                    fut.set_result(message.get("result"))
+        elif "method" in message and "id" not in message:
+            # Notification
+            self._handle_notification(message["method"], message.get("params"))
+        elif "method" in message and "id" in message:
+            # Server-to-client request
+            self._writer.write({
+                "jsonrpc": "2.0",
+                "id": message["id"],
+                "result": None
+            })
+
+    def _handle_notification(self, notification_name, params):
+        """Internal handler for notifications."""
+        fut = Future()
+
+        def _handler():
+            callback = self.get_notification_callback(notification_name)
+            callback(params)
+            fut.set_result(None)
+
+        self._thread_pool.submit(_handler)
+        return fut
 
     def initialize(
         self,
@@ -109,7 +197,7 @@ class LspSession(MethodDispatcher):
 
     def initialized(self, initialized_params=None):
         """Sends the initialized notification to LSP server."""
-        self._endpoint.notify("initialized", initialized_params or {})
+        self._send_notification("initialized", params=(initialized_params or {}))
 
     def shutdown(self, should_exit, exit_timeout=LSP_EXIT_TIMEOUT):
         """Sends the shutdown request to LSP server."""
@@ -123,7 +211,7 @@ class LspSession(MethodDispatcher):
 
     def exit_lsp(self, exit_timeout=LSP_EXIT_TIMEOUT):
         """Handles LSP server process exit."""
-        self._endpoint.notify("exit")
+        self._send_notification("exit")
         assert self._sub.wait(exit_timeout) == 0
 
     def notify_did_change(self, did_change_params):
@@ -175,40 +263,31 @@ class LspSession(MethodDispatcher):
 
             return _default_handler
 
-    def _publish_diagnostics(self, publish_diagnostics_params):
-        """Internal handler for text document publish diagnostics."""
-        return self._handle_notification(
-            PUBLISH_DIAGNOSTICS, publish_diagnostics_params
-        )
-
-    def _window_log_message(self, window_log_message_params):
-        """Internal handler for window log message."""
-        return self._handle_notification(WINDOW_LOG_MESSAGE, window_log_message_params)
-
-    def _window_show_message(self, window_show_message_params):
-        """Internal handler for window show message."""
-        return self._handle_notification(
-            WINDOW_SHOW_MESSAGE, window_show_message_params
-        )
-
-    def _handle_notification(self, notification_name, params):
-        """Internal handler for notifications."""
-        fut = Future()
-
-        def _handler():
-            callback = self.get_notification_callback(notification_name)
-            callback(params)
-            fut.set_result(None)
-
-        self._thread_pool.submit(_handler)
-        return fut
-
     def _send_request(self, name, params=None, handle_response=lambda f: f.done()):
         """Sends {name} request to the LSP server."""
-        fut = self._endpoint.request(name, params)
+        msg_id = self._next_id()
+        fut = Future()
+        self._request_futures[msg_id] = fut
+
+        message = {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "method": name,
+        }
+        if params is not None:
+            message["params"] = params
+
+        self._writer.write(message)
         fut.add_done_callback(handle_response)
         return fut
 
     def _send_notification(self, name, params=None):
         """Sends {name} notification to the LSP server."""
-        self._endpoint.notify(name, params)
+        message = {
+            "jsonrpc": "2.0",
+            "method": name,
+        }
+        if params is not None:
+            message["params"] = params
+
+        self._writer.write(message)
