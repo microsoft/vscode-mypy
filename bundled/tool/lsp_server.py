@@ -110,7 +110,7 @@ class MypyInfo:
 MYPY_INFO_TABLE: Dict[str, MypyInfo] = {}
 
 
-def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
+def get_mypy_info(settings: Dict[str, Any]) -> Optional[MypyInfo]:
     try:
         code_workspace = settings["workspaceFS"]
         if code_workspace not in MYPY_INFO_TABLE:
@@ -130,6 +130,7 @@ def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
         log_to_output(
             f"Error while checking mypy executable:\r\n{traceback.format_exc()}"
         )
+        return None
 
 
 def _run_unidentified_tool(
@@ -232,7 +233,12 @@ def _linting_helper(document: TextDocument) -> None:
             _clear_diagnostics(document)
             return None
 
-        version = get_mypy_info(settings).version
+        mypy_info = get_mypy_info(settings)
+        if mypy_info is None:
+            log_error(f"Unable to get mypy info for {document.path}")
+            return None
+        
+        version = mypy_info.version
         if (version.major, version.minor) >= (0, 991) and sys.version_info >= (3, 8):
             extra_args += ["--show-error-end"]
 
@@ -458,7 +464,8 @@ def initialize(params: lsp.InitializeParams) -> None:
 def on_exit(_params: Optional[Any] = None) -> None:
     """Handle clean up on exit."""
     for settings in WORKSPACE_SETTINGS.values():
-        if get_mypy_info(settings).is_daemon:
+        mypy_info = get_mypy_info(settings)
+        if mypy_info and mypy_info.is_daemon:
             try:
                 _run_dmypy_command([], copy.deepcopy(settings), "kill")
             except Exception:
@@ -469,7 +476,8 @@ def on_exit(_params: Optional[Any] = None) -> None:
 def on_shutdown(_params: Optional[Any] = None) -> None:
     """Handle clean up on shutdown."""
     for settings in WORKSPACE_SETTINGS.values():
-        if get_mypy_info(settings).is_daemon:
+        mypy_info = get_mypy_info(settings)
+        if mypy_info and mypy_info.is_daemon:
             try:
                 _run_dmypy_command([], copy.deepcopy(settings), "stop")
             except Exception:
@@ -479,7 +487,16 @@ def on_shutdown(_params: Optional[Any] = None) -> None:
 def _log_version_info() -> None:
     for settings in WORKSPACE_SETTINGS.values():
         code_workspace = settings["workspaceFS"]
-        actual_version = get_mypy_info(settings).version
+        mypy_info = get_mypy_info(settings)
+        
+        if mypy_info is None:
+            log_error(
+                f"Unable to determine mypy version for {code_workspace}. "
+                f"Please ensure mypy is installed and accessible."
+            )
+            continue
+        
+        actual_version = mypy_info.version
         min_version = parse_version(MIN_VERSION)
 
         if actual_version < min_version:
@@ -715,12 +732,17 @@ def _run_tool_on_document(
 
     cwd = get_cwd(settings, document)
 
+    mypy_info = get_mypy_info(settings)
+    if mypy_info is None:
+        log_error(f"Unable to get mypy info for running tool on document: {document.path}")
+        return None
+
     if settings["path"]:
         argv = settings["path"]
     else:
         argv = settings["interpreter"] or [sys.executable]
-        argv += ["-m", "mypy.dmypy" if get_mypy_info(settings).is_daemon else "mypy"]
-    if get_mypy_info(settings).is_daemon:
+        argv += ["-m", "mypy.dmypy" if mypy_info.is_daemon else "mypy"]
+    if mypy_info.is_daemon:
         argv += _get_dmypy_args(settings, "run")
     argv += TOOL_ARGS + settings["args"] + extra_args
     if settings["reportingScope"] == "file":
@@ -751,7 +773,8 @@ def _run_tool_on_document(
 def _run_dmypy_command(
     extra_args: Sequence[str], settings: Dict[str, Any], command: str
 ) -> utils.RunResult:
-    if not get_mypy_info(settings).is_daemon:
+    mypy_info = get_mypy_info(settings)
+    if mypy_info is None or not mypy_info.is_daemon:
         log_error(f"dmypy command called in non-daemon context: {command}")
         raise ValueError(f"dmypy command called in non-daemon context: {command}")
 
