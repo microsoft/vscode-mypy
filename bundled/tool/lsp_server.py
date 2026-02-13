@@ -236,6 +236,7 @@ def _linting_helper(document: TextDocument) -> None:
         mypy_info = get_mypy_info(settings)
         if mypy_info is None:
             log_error(f"Unable to get mypy info for {document.path}")
+            _clear_diagnostics(document)
             return None
         
         version = mypy_info.version
