@@ -16,7 +16,7 @@ variables:
   - name: VsixName
     value: mypy.vsix
   - name: PYTHON_VERSION
-    value: '3.10'  # Minimum supported version
+    value: '3.10' # Minimum supported version
 
 parameters:
   - name: publishExtension

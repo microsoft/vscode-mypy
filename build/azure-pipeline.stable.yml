@@ -7,7 +7,7 @@ trigger: none
 pr: none
 
 variables:
-  PYTHON_VERSION: '3.10'  # Minimum supported version
+  PYTHON_VERSION: '3.10' # Minimum supported version
 
 resources:
   repositories:
