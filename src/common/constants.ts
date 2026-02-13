@@ -13,3 +13,4 @@ export const PYTHON_MAJOR = 3;
 export const PYTHON_MINOR = 8;
 export const PYTHON_VERSION = `${PYTHON_MAJOR}.${PYTHON_MINOR}`;
 export const LS_SERVER_RESTART_DELAY = 1000;
+export const MYPY_CONFIG_FILES = ['mypy.ini', '.mypy.ini', 'pyproject.toml', 'setup.cfg'];
