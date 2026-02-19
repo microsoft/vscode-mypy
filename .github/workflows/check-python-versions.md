@@ -1,8 +1,11 @@
 ---
 description: >
-  Annual check of the latest supported Python versions from devguide.python.org.
+  Annual check of the latest supported Python versions from peps.python.org.
   Creates a PR to add newly released versions and remove end-of-life versions
   from CI workflows, actions, Azure Pipelines, and source code.
+strict: false
+engine:
+  id: copilot
 on:
   schedule:
     - cron: "0 12 15 10 *"
@@ -15,7 +18,9 @@ tools:
     toolsets: [default]
 network:
   allowed:
+    - defaults
     - python
+    - "peps.python.org"
 safe-outputs:
   create-pull-request:
     draft: true
@@ -35,9 +40,9 @@ This repository is a VS Code extension that supports all actively maintained Pyt
 
 ### Step 1: Fetch current supported Python versions
 
-Fetch `https://devguide.python.org/versions/` and parse the **Supported versions** table.
+Fetch `https://peps.python.org/api/release-cycle.json` and parse the JSON response.
 
-Extract all versions that have a status of **bugfix** or **security**. These are the released, actively supported versions. Ignore versions with status **feature** or **prerelease** (these are not yet released).
+Each key in the JSON object is a Python version (e.g., `"3.13"`), and its value contains a `"status"` field. Extract all versions where the status is **`security`**, **`bugfix`**, or **`feature`**. Ignore versions with status **`end-of-life`** (or any other status).
 
 Build a sorted list of supported versions (e.g., `['3.10', '3.11', '3.12', '3.13', '3.14']`). The lowest is the minimum supported version, the highest is the newest.
 
@@ -94,7 +99,7 @@ Create a pull request with all the changes using the `create-pull-request` safe 
 - **Title**: `Update supported Python versions`
 - **Body**: Include:
   - A summary of what changed (versions added/removed, minimum version update if applicable)
-  - A link to https://devguide.python.org/versions/ as the source of truth
+  - A link to https://peps.python.org/api/release-cycle.json as the source of truth
   - The list of files modified
   - A note to verify CI passes before merging
 
