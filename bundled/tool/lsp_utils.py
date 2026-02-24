@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 """Utility functions and classes for use with running tools over LSP."""
+
 from __future__ import annotations
 
 import contextlib
@@ -8,6 +9,7 @@ import fnmatch
 import io
 import os
 import pathlib
+import re
 import runpy
 import site
 import subprocess
@@ -24,6 +26,16 @@ SEE_HREF_PREFIX = "See https://mypy.readthedocs.io"
 SEE_PREFIX_LEN = len("See ")
 NOTE_CODE = "note"
 LINE_OFFSET = CHAR_OFFSET = 1
+
+# Regex pattern to parse mypy diagnostic output lines.
+# Format: filepath:line[:char][:end_line:end_char]: type: message  [code]
+# Example: /path/to/file.py:14:16:19:5: error: Value of type variable...  [type-var]
+# Key features:
+# - (?:\s{2}\[(?P<code>[\w-]+)\])? - Optional error code with double-space separator
+# - \s*$ - Tolerates trailing whitespace (spaces, tabs, etc.)
+DIAGNOSTIC_RE = re.compile(
+    r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+)(?::(?P<char>\d+))?(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:\s{2}\[(?P<code>[\w-]+)\])?\s*$"
+)
 
 
 def as_list(content: Union[Any, List[Any], Tuple[Any]]) -> List[Any]:
@@ -67,14 +79,14 @@ _stdlib_paths = set(
 )
 
 
-def is_same_path(file_path1: str, file_path2: str) -> bool:
-    """Returns true if two paths are the same."""
-    return pathlib.Path(file_path1) == pathlib.Path(file_path2)
-
-
 def normalize_path(file_path: str) -> str:
     """Returns normalized path."""
     return str(pathlib.Path(file_path).resolve())
+
+
+def is_same_path(file_path1: str, file_path2: str) -> bool:
+    """Returns true if two paths are the same, resolving symlinks."""
+    return pathlib.Path(file_path1).resolve() == pathlib.Path(file_path2).resolve()
 
 
 def absolute_path(file_path: str) -> str:
@@ -82,7 +94,7 @@ def absolute_path(file_path: str) -> str:
     return str(pathlib.Path(file_path).absolute())
 
 
-def is_current_interpreter(executable) -> bool:
+def is_current_interpreter(executable: str) -> bool:
     """Returns true if the executable path is same as the current interpreter."""
     return is_same_path(executable, sys.executable)
 
@@ -93,11 +105,31 @@ def is_stdlib_file(file_path: str) -> bool:
     return any(normalized_path.startswith(path) for path in _stdlib_paths)
 
 
-def is_match(patterns: List[str], file_path: str) -> bool:
+def _get_relative_path(file_path: str, workspace_root: str) -> str:
+    """Returns the file path relative to the workspace root.
+
+    Falls back to the original path if the workspace root is empty or
+    the paths are on different drives (Windows).
+    """
+    if not workspace_root:
+        return pathlib.Path(file_path).as_posix()
+    try:
+        return pathlib.Path(file_path).relative_to(workspace_root).as_posix()
+    except ValueError:
+        return pathlib.Path(file_path).as_posix()
+
+
+def is_match(patterns: List[str], file_path: str, workspace_root: str) -> bool:
     """Returns true if the file matches one of the fnmatch patterns."""
     if not patterns:
         return False
-    return any(fnmatch.fnmatch(file_path, pattern) for pattern in patterns)
+    relative_path = _get_relative_path(file_path, workspace_root)
+    file_name = pathlib.Path(file_path).name
+    return any(
+        fnmatch.fnmatch(relative_path, pattern)
+        or (not pattern.startswith("/") and fnmatch.fnmatch(file_name, pattern))
+        for pattern in patterns
+    )
 
 
 # pylint: disable-next=too-few-public-methods
