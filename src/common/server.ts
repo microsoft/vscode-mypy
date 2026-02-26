@@ -98,9 +98,9 @@ export async function restartServer(
         } catch (ex) {
             traceError(`Server: Stop failed: ${ex}`);
         }
-        _disposables.forEach((d) => d.dispose());
-        _disposables = [];
     }
+    _disposables.forEach((d) => d.dispose());
+    _disposables = [];
     updateStatus(undefined, LanguageStatusSeverity.Information, true);
 
     const newLSClient = await createServer(workspaceSetting, serverId, serverName, outputChannel, {
