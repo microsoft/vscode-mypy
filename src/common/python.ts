@@ -37,11 +37,19 @@ async function getEnvironmentsExtensionAPI(): Promise<PythonEnvironmentsAPI | un
     if (!extension) {
         return undefined;
     }
-    if (!extension.isActive) {
-        await extension.activate();
+    try {
+        if (!extension.isActive) {
+            await extension.activate();
+        }
+        _envsApi = extension.exports as PythonEnvironmentsAPI;
+        return _envsApi;
+    } catch (ex) {
+        traceLog(
+            `Failed to activate Python environments extension '${PYTHON_ENVIRONMENTS_EXTENSION_ID}'. Falling back to legacy 'ms-python.python' path.`
+        );
+        traceError('Error activating Python environments extension', ex);
+        return undefined;
     }
-    _envsApi = extension.exports as PythonEnvironmentsAPI;
-    return _envsApi;
 }
 
 function sameInterpreter(a: string[], b: string[]): boolean {
