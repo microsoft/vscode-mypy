@@ -23,7 +23,7 @@
 #
 # When a new issue is opened — or when a maintainer comments `/triage-issue` on an existing issue — analyze its root cause, check whether the same issue could affect other extensions built from the microsoft/vscode-python-tools-extension-template, and look for related open issues on the upstream mypy repository (python/mypy). If applicable, suggest an upstream fix and surface relevant mypy issues to the reporter.
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"a44839c3e9c4538d8170b307669ad474ffa340b9657b10c8c38aba1b64de6093","compiler_version":"v0.47.5"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"7d16ed0414ebb1e53ecb12f6b5d4405c23b79fc7751650535223d32576aced92","compiler_version":"v0.47.5"}
 
 name: 'Issue Triage'
 'on':
@@ -908,6 +908,7 @@ jobs:
           GH_AW_WORKFLOW_ID: 'issue-triage'
           GH_AW_SECRET_VERIFICATION_RESULT: ${{ needs.agent.outputs.secret_verification_result }}
           GH_AW_CHECKOUT_PR_SUCCESS: ${{ needs.agent.outputs.checkout_pr_success }}
+          GH_AW_SAFE_OUTPUT_MESSAGES: '{"runStarted":"⏳ **Triage Issue Agent**: I will analyze this issue and determine if related issues exist in this repo, the upstream Python tool, or similar extensions. This may take a couple of minutes."}'
           GH_AW_GROUP_REPORTS: 'false'
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
@@ -1068,6 +1069,7 @@ jobs:
     timeout-minutes: 15
     env:
       GH_AW_ENGINE_ID: 'copilot'
+      GH_AW_SAFE_OUTPUT_MESSAGES: '{"runStarted":"⏳ **Triage Issue Agent**: I will analyze this issue and determine if related issues exist in this repo, the upstream Python tool, or similar extensions. This may take a couple of minutes."}'
       GH_AW_WORKFLOW_ID: 'issue-triage'
       GH_AW_WORKFLOW_NAME: 'Issue Triage'
     outputs:
