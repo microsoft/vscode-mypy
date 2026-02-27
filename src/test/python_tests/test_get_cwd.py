@@ -28,6 +28,9 @@ def _setup_mocks():
         def show_message(self, *args, **kwargs):
             pass
 
+        def window_log_message(self, *args, **kwargs):
+            pass
+
     mock_server = types.ModuleType("pygls.lsp.server")
     mock_server.LanguageServer = _MockLS
 
@@ -57,11 +60,12 @@ def _setup_mocks():
         "DidSaveTextDocumentParams",
         "DocumentFormattingParams",
         "InitializeParams",
+        "LogMessageParams",
         "Position",
         "Range",
         "TextEdit",
     ]:
-        setattr(mock_lsp, _name, type(_name, (), {}))
+        setattr(mock_lsp, _name, type(_name, (), {"__init__": lambda self, **kw: None}))
     mock_lsp.MessageType = type(
         "MessageType", (), {"Log": 4, "Error": 1, "Warning": 2, "Info": 3, "Debug": 5}
     )
