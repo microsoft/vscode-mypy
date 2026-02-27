@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 """Unit tests for the get_cwd() helper in lsp_server."""
+
 import os
 import pathlib
 import sys
@@ -11,6 +12,8 @@ import types
 # Stub out bundled LSP dependencies so lsp_server can be imported without the
 # full VS Code extension environment.
 # ---------------------------------------------------------------------------
+
+
 def _setup_mocks():
     class _MockLS:
         def __init__(self, **kwargs):
@@ -26,6 +29,9 @@ def _setup_mocks():
             pass
 
         def show_message(self, *args, **kwargs):
+            pass
+
+        def window_log_message(self, *args, **kwargs):
             pass
 
     mock_server = types.ModuleType("pygls.lsp.server")
@@ -57,11 +63,12 @@ def _setup_mocks():
         "DidSaveTextDocumentParams",
         "DocumentFormattingParams",
         "InitializeParams",
+        "LogMessageParams",
         "Position",
         "Range",
         "TextEdit",
     ]:
-        setattr(mock_lsp, _name, type(_name, (), {}))
+        setattr(mock_lsp, _name, type(_name, (), {"__init__": lambda self, **kw: None}))
     mock_lsp.MessageType = type(
         "MessageType", (), {"Log": 4, "Error": 1, "Warning": 2, "Info": 3, "Debug": 5}
     )
