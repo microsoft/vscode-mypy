@@ -3,6 +3,7 @@
 
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
+import { createConfigFileWatchers } from './common/configWatcher';
 import { registerLogger, traceError, traceLog, traceVerbose } from './common/logging';
 import { initializePython, onDidChangePythonInterpreter } from './common/python';
 import { restartServer } from './common/server';
@@ -74,6 +75,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     };
 
     context.subscriptions.push(
+        ...createConfigFileWatchers(runServer),
         onDidChangePythonInterpreter(async () => {
             await runServer();
         }),
@@ -110,6 +112,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export async function deactivate(): Promise<void> {
     if (lsClient) {
-        await lsClient.stop();
+        try {
+            await lsClient.stop();
+        } catch (ex) {
+            traceError(`Server: Stop failed: ${ex}`);
+        }
     }
 }

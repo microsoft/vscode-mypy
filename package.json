@@ -217,7 +217,7 @@
     "dependencies": {
         "@vscode/python-extension": "^1.0.6",
         "fs-extra": "^11.3.1",
-        "minimatch": "^10.1.1",
+        "minimatch": "^10.2.4",
         "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
@@ -231,7 +231,7 @@
         "@typescript-eslint/eslint-plugin": "^7.18.0",
         "@typescript-eslint/parser": "^7.18.0",
         "@vscode/test-electron": "^2.3.8",
-        "@vscode/vsce": "^2.22.0",
+        "@vscode/vsce": "^3.7.1-1",
         "chai": "^4.3.10",
         "eslint": "^8.57.0",
         "glob": "^11.0.0",

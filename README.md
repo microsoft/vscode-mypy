@@ -1,8 +1,8 @@
 # Mypy extension for Visual Studio Code
 
-A Visual Studio Code extension with support for the Mypy type checker. This extension ships with `mypy=1.19.1`.
+A Visual Studio Code extension with support for the Mypy type checker. This extension ships with `mypy=1.15.0`.
 
-> **Note**: The minimum version of Mypy this extension supports is `1.19.1`. If you have any issues with Mypy, please report it to [this issue tracker](https://github.com/python/mypy/issues) as this extension is just a wrapper around Mypy.
+> **Note**: The minimum version of Mypy this extension supports is `1.15.0`. If you have any issues with Mypy, please report it to [this issue tracker](https://github.com/python/mypy/issues) as this extension is just a wrapper around Mypy.
 
 This extension supports all [actively supported versions](https://devguide.python.org/#status-of-python-branches) of the Python language.
 
@@ -85,7 +85,7 @@ There are several settings you can configure to customize the behavior of this e
       <td>mypy-type-checker.reportingScope</td>
       <td><code>file</code></td>
       <td>(experimental) Controls the scope of Mypy's problem reporting. If set to <code>file</code>, Mypy will limit its problem reporting to the files currently open in the editor. If set to <code>workspace</code>, Mypy will extend its problem reporting to include all files within the workspace.
-      If set to <code>>custom</code>, Mypy will only report problems for files specified in the [Mypy configuration](https://mypy.readthedocs.io/en/stable/config_file.html#confval-files)</td>
+      If set to <code>custom</code>, Mypy will only report problems for files specified in the [Mypy configuration](https://mypy.readthedocs.io/en/stable/config_file.html#confval-files)</td>
     </tr>
     <tr>
       <td>mypy-type-checker.preferDaemon</td>
