@@ -281,7 +281,7 @@ def _run_api(
     str_output = None
     str_error = None
 
-    try:
+    with contextlib.suppress(SystemExit):
         with substitute_attr(sys, "argv", argv):
             if use_stdin and source is not None:
                 str_input = CustomIO("<stdin>", encoding="utf-8", newline="\n")
@@ -291,7 +291,5 @@ def _run_api(
                     str_output, str_error, exit_code = callback(argv, str_input)
             else:
                 str_output, str_error, exit_code = callback(argv, None)
-    except SystemExit:
-        pass
 
     return RunResult(str_output, str_error, exit_code)
