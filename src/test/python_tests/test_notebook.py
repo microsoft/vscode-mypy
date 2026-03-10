@@ -92,8 +92,7 @@ def test_notebook_did_open():
 
 
 def test_notebook_did_change_text_content():
-    """Diagnostics update when the text content of a cell changes.
-    """
+    """Diagnostics update when the text content of a cell changes."""
     nb_path = str(constants.TEST_DATA / "sample1" / "sample.ipynb")
     nb_uri = _make_notebook_uri(nb_path)
     cell_id = "cell1"
@@ -175,8 +174,7 @@ def test_notebook_did_change_text_content():
 
 
 def test_notebook_did_save():
-    """All code cells are re-linted when a notebook is saved.
-    """
+    """All code cells are re-linted when a notebook is saved."""
     nb_path = str(constants.TEST_DATA / "sample1" / "sample.ipynb")
     nb_uri = _make_notebook_uri(nb_path)
     cell_id = "cell1"
@@ -333,17 +331,16 @@ def test_notebook_did_change_new_cell_kind_filter():
 
         # The code cell should receive diagnostics; the markdown cell must not.
         uris_with_diagnostics = {r.get("uri") for r in received}
-        assert code_cell_uri in uris_with_diagnostics, (
-            f"Expected diagnostics for code cell {code_cell_uri!r}, got: {received}"
-        )
-        assert md_cell_uri not in uris_with_diagnostics, (
-            f"Markdown cell {md_cell_uri!r} should not receive diagnostics, got: {received}"
-        )
+        assert (
+            code_cell_uri in uris_with_diagnostics
+        ), f"Expected diagnostics for code cell {code_cell_uri!r}, got: {received}"
+        assert (
+            md_cell_uri not in uris_with_diagnostics
+        ), f"Markdown cell {md_cell_uri!r} should not receive diagnostics, got: {received}"
 
 
 def test_notebook_did_close():
-    """Diagnostics are cleared for all cells when a notebook is closed.
-    """
+    """Diagnostics are cleared for all cells when a notebook is closed."""
     nb_path = str(constants.TEST_DATA / "sample1" / "sample.ipynb")
     nb_uri = _make_notebook_uri(nb_path)
     cell_id = "cell1"
@@ -359,9 +356,7 @@ def test_notebook_did_close():
         def _open_handler(_params):
             open_done.set()
 
-        ls_session.set_notification_callback(
-            session.PUBLISH_DIAGNOSTICS, _open_handler
-        )
+        ls_session.set_notification_callback(session.PUBLISH_DIAGNOSTICS, _open_handler)
 
         ls_session.notify_notebook_did_open(
             {
@@ -408,9 +403,7 @@ def test_notebook_did_close():
                     "uri": nb_uri,
                     "version": 1,
                 },
-                "cellTextDocuments": [
-                    {"uri": cell_uri}
-                ],
+                "cellTextDocuments": [{"uri": cell_uri}],
             }
         )
 
@@ -418,6 +411,5 @@ def test_notebook_did_close():
 
         # Diagnostics should be cleared (empty list) for the cell URI
         assert any(
-            r.get("uri") == cell_uri and r.get("diagnostics") == []
-            for r in received
+            r.get("uri") == cell_uri and r.get("diagnostics") == [] for r in received
         ), f"Expected empty diagnostics for {cell_uri!r}, got: {received}"

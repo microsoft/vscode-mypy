@@ -93,7 +93,12 @@ NOTEBOOK_SYNC_OPTIONS = lsp.NotebookDocumentSyncOptions(
     ],
     save=True,
 )
-LSP_SERVER = LanguageServer(name="Mypy", version="v0.1.0", max_workers=MAX_WORKERS, notebook_document_sync=NOTEBOOK_SYNC_OPTIONS)
+LSP_SERVER = LanguageServer(
+    name="Mypy",
+    version="v0.1.0",
+    max_workers=MAX_WORKERS,
+    notebook_document_sync=NOTEBOOK_SYNC_OPTIONS,
+)
 
 DMYPY_ARGS = {}
 DMYPY_STATUS_FILE_ROOT = None
