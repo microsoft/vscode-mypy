@@ -113,6 +113,7 @@ def _get_document_path(document: TextDocument) -> str:
             return result
     return document.path
 
+
 # **********************************************************
 # Tool specific code goes below this.
 # **********************************************************
