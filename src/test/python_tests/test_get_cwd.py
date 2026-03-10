@@ -25,13 +25,10 @@ def _setup_mocks():
         def command(self, *args, **kwargs):
             return lambda f: f
 
-        def show_message_log(self, *args, **kwargs):
-            pass
-
-        def show_message(self, *args, **kwargs):
-            pass
-
         def window_log_message(self, *args, **kwargs):
+            pass
+
+        def window_show_message(self, *args, **kwargs):
             pass
 
     mock_server = types.ModuleType("pygls.lsp.server")
@@ -53,6 +50,10 @@ def _setup_mocks():
         "INITIALIZE",
         "EXIT",
         "SHUTDOWN",
+        "NOTEBOOK_DOCUMENT_DID_OPEN",
+        "NOTEBOOK_DOCUMENT_DID_CHANGE",
+        "NOTEBOOK_DOCUMENT_DID_SAVE",
+        "NOTEBOOK_DOCUMENT_DID_CLOSE",
     ]:
         setattr(mock_lsp, _name, _name)
     for _name in [
@@ -61,10 +62,19 @@ def _setup_mocks():
         "DidCloseTextDocumentParams",
         "DidOpenTextDocumentParams",
         "DidSaveTextDocumentParams",
+        "DidChangeNotebookDocumentParams",
+        "DidCloseNotebookDocumentParams",
+        "DidOpenNotebookDocumentParams",
+        "DidSaveNotebookDocumentParams",
         "DocumentFormattingParams",
         "InitializeParams",
         "LogMessageParams",
+        "NotebookCellKind",
+        "NotebookCellLanguage",
+        "NotebookDocumentFilterWithNotebook",
+        "NotebookDocumentSyncOptions",
         "Position",
+        "PublishDiagnosticsParams",
         "Range",
         "TextEdit",
     ]:
