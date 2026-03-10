@@ -250,6 +250,8 @@ def notebook_did_change(params: lsp.DidChangeNotebookDocumentParams) -> None:
     structure = params.change.cells.structure
     if structure and structure.did_open:
         for cell_doc in structure.did_open:
+            if cell_doc.language_id != "python":
+                continue
             document = LSP_SERVER.workspace.get_text_document(cell_doc.uri)
             _linting_helper(document)
 
@@ -385,6 +387,7 @@ def _linting_helper(document: TextDocument) -> None:
                 message=f"Linting failed with error:\r\n{traceback.format_exc()}",
             )
         )
+        _clear_diagnostics(document)
     return []
 
 
