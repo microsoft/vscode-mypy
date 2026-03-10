@@ -245,7 +245,7 @@
         "typemoq": "^2.1.0",
         "typescript": "^5.9.2",
         "webpack": "^5.89.0",
-        "webpack-cli": "^5.1.4"
+        "webpack-cli": "^6.0.1"
     },
     "overrides": {
         "serialize-javascript": "^7.0.3"
