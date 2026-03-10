@@ -49,7 +49,7 @@ def test_notebook_did_open():
     cell_contents = "x = 1\n"
 
     with session.LspSession() as ls_session:
-        ls_session.initialize(defaults.VSCODE_DEFAULT_INITIALIZE)
+        ls_session.initialize(defaults.vscode_initialize_defaults())
 
         done = Event()
         received = []
@@ -109,7 +109,7 @@ def test_notebook_did_change_text_content():
     updated_contents = "y = 2\n"
 
     with session.LspSession() as ls_session:
-        ls_session.initialize(defaults.VSCODE_DEFAULT_INITIALIZE)
+        ls_session.initialize(defaults.vscode_initialize_defaults())
 
         # Open notebook first
         ls_session.notify_notebook_did_open(
@@ -195,7 +195,7 @@ def test_notebook_did_save():
     cell_contents = "x = 1\n"
 
     with session.LspSession() as ls_session:
-        ls_session.initialize(defaults.VSCODE_DEFAULT_INITIALIZE)
+        ls_session.initialize(defaults.vscode_initialize_defaults())
 
         # Open notebook first
         ls_session.notify_notebook_did_open(
@@ -265,7 +265,7 @@ def test_notebook_did_change_new_cell_kind_filter():
     md_cell_uri = _make_cell_uri(nb_path, md_cell_id)
 
     with session.LspSession() as ls_session:
-        ls_session.initialize(defaults.VSCODE_DEFAULT_INITIALIZE)
+        ls_session.initialize(defaults.vscode_initialize_defaults())
 
         # Open an initially empty notebook
         ls_session.notify_notebook_did_open(
@@ -366,7 +366,7 @@ def test_notebook_did_close():
     cell_contents = "x = 1\n"
 
     with session.LspSession() as ls_session:
-        ls_session.initialize(defaults.VSCODE_DEFAULT_INITIALIZE)
+        ls_session.initialize(defaults.vscode_initialize_defaults())
 
         # Open notebook first
         ls_session.notify_notebook_did_open(
