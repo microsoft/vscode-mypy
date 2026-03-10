@@ -368,7 +368,16 @@ def test_notebook_did_close():
     with session.LspSession() as ls_session:
         ls_session.initialize(defaults.vscode_initialize_defaults())
 
-        # Open notebook first
+        # Open notebook and wait for the initial diagnostics to arrive
+        open_done = Event()
+
+        def _open_handler(params):
+            open_done.set()
+
+        ls_session.set_notification_callback(
+            session.PUBLISH_DIAGNOSTICS, _open_handler
+        )
+
         ls_session.notify_notebook_did_open(
             {
                 "notebookDocument": {
@@ -396,6 +405,9 @@ def test_notebook_did_close():
             }
         )
 
+        open_done.wait(TIMEOUT)
+
+        # Now set up a fresh callback for the close notification
         done = Event()
         received = []
 
