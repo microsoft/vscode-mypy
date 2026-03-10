@@ -7,7 +7,6 @@ These are template-style example tests that demonstrate how to validate notebook
 cell diagnostics. Adapt the expected diagnostics to match your tool's output.
 """
 
-import os
 from threading import Event
 
 from .lsp_test_client import constants, defaults, session, utils
@@ -39,8 +38,6 @@ def test_notebook_did_open():
     This test sends a notebookDocument/didOpen notification for a notebook with
     one code cell and verifies that a publishDiagnostics notification is received
     for that cell's URI.
-
-    TODO: Update the expected diagnostics to match your tool's output.
     """
     nb_path = str(constants.TEST_DATA / "sample1" / "sample.ipynb")
     nb_uri = _make_notebook_uri(nb_path)
@@ -88,8 +85,6 @@ def test_notebook_did_open():
         )
 
         done.wait(TIMEOUT)
-
-        # TODO: Add your tool-specific assertion on `received`.
         # For now, just verify we got a diagnostics notification for the cell.
         assert any(
             r.get("uri") == cell_uri for r in received
@@ -98,8 +93,6 @@ def test_notebook_did_open():
 
 def test_notebook_did_change_text_content():
     """Diagnostics update when the text content of a cell changes.
-
-    TODO: Update the expected diagnostics to match your tool's output.
     """
     nb_path = str(constants.TEST_DATA / "sample1" / "sample.ipynb")
     nb_uri = _make_notebook_uri(nb_path)
@@ -176,8 +169,6 @@ def test_notebook_did_change_text_content():
         )
 
         done.wait(TIMEOUT)
-
-        # TODO: Add your tool-specific assertion on `received`.
         assert any(
             r.get("uri") == cell_uri for r in received
         ), f"Expected diagnostics for {cell_uri!r}, got: {received}"
@@ -185,8 +176,6 @@ def test_notebook_did_change_text_content():
 
 def test_notebook_did_save():
     """All code cells are re-linted when a notebook is saved.
-
-    TODO: Update the expected diagnostics to match your tool's output.
     """
     nb_path = str(constants.TEST_DATA / "sample1" / "sample.ipynb")
     nb_uri = _make_notebook_uri(nb_path)
@@ -244,8 +233,6 @@ def test_notebook_did_save():
         )
 
         done.wait(TIMEOUT)
-
-        # TODO: Add your tool-specific assertion on `received`.
         assert any(
             r.get("uri") == cell_uri for r in received
         ), f"Expected diagnostics for {cell_uri!r}, got: {received}"
@@ -356,8 +343,6 @@ def test_notebook_did_change_new_cell_kind_filter():
 
 def test_notebook_did_close():
     """Diagnostics are cleared for all cells when a notebook is closed.
-
-    TODO: Update the expected diagnostics to match your tool's output.
     """
     nb_path = str(constants.TEST_DATA / "sample1" / "sample.ipynb")
     nb_uri = _make_notebook_uri(nb_path)
@@ -371,7 +356,7 @@ def test_notebook_did_close():
         # Open notebook and wait for the initial diagnostics to arrive
         open_done = Event()
 
-        def _open_handler(params):
+        def _open_handler(_params):
             open_done.set()
 
         ls_session.set_notification_callback(
