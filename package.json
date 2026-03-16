@@ -215,7 +215,7 @@
         ]
     },
     "dependencies": {
-        "@vscode/python-environments": "^1.0.0",
+        "@vscode/python-environments": "https://pkgs.dev.azure.com/azure-public/vside/_packaging/msft_consumption/npm/registry/@vscode/python-environments/-/python-environments-1.0.0.tgz",
         "@vscode/python-extension": "^1.0.6",
         "fs-extra": "^11.3.1",
         "minimatch": "^10.2.4",
