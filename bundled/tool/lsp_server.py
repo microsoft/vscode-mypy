@@ -660,21 +660,40 @@ def _get_env_vars(settings: Dict[str, Any]) -> Dict[str, str]:
 
 
 def get_cwd(settings: Dict[str, Any], document: Optional[TextDocument]) -> str:
-    """Returns cwd for the given settings and document."""
-    # this happens when running dmypy.
-    if document is None:
-        return settings["workspaceFS"]
+    """Returns cwd for the given settings and document.
 
-    if settings["cwd"] == "${workspaceFolder}":
-        return settings["workspaceFS"]
+    Resolves the following VS Code file-related variable substitutions when
+    a document is available:
 
-    if settings["cwd"] == "${fileDirname}":
-        return os.fspath(pathlib.Path(document.path).parent)
+    - ``${file}`` – absolute path of the current document.
+    - ``${fileBasename}`` – file name with extension (e.g. ``foo.py``).
+    - ``${fileBasenameNoExtension}`` – file name without extension (e.g. ``foo``).
+    - ``${fileExtname}`` – file extension including the dot (e.g. ``.py``).
+    - ``${fileDirname}`` – directory containing the current document.
+    - ``${fileDirnameBasename}`` – name of the directory containing the document.
+    - ``${relativeFile}`` – document path relative to the workspace root.
+    - ``${relativeFileDirname}`` – document directory relative to the workspace root.
+    - ``${fileWorkspaceFolder}`` – workspace root folder for the document.
 
-    if settings["cwd"] == "${nearestConfig}":
-        workspaceFolder = pathlib.Path(settings["workspaceFS"])
+    Variables that do not depend on the document (``${workspaceFolder}``,
+    ``${userHome}``, ``${cwd}``) are pre-resolved by the TypeScript client.
+
+    The special mypy-specific value ``${nearestConfig}`` walks up the directory
+    tree from the document's location to find the nearest mypy configuration file
+    (mypy.ini, .mypy.ini, pyproject.toml, setup.cfg).
+
+    If no document is available and the value contains any unresolvable
+    file-variable, the workspace root is returned as a fallback.
+    """
+    cwd = settings.get("cwd", settings["workspaceFS"])
+    workspace_fs = settings["workspaceFS"]
+
+    # mypy-specific: walk up to find nearest mypy configuration file
+    if cwd == "${nearestConfig}":
+        if not document or not document.path:
+            return workspace_fs
+        workspaceFolder = pathlib.Path(workspace_fs)
         candidate = pathlib.Path(document.path).parent
-        # check if pyproject exists
         check_for = ["mypy.ini", ".mypy.ini", "pyproject.toml", "setup.cfg"]
         # until we leave the workspace
         while candidate.is_relative_to(workspaceFolder):
@@ -693,9 +712,35 @@ def get_cwd(settings: Dict[str, Any], document: Optional[TextDocument]) -> str:
                 f"failed to find {', '.join(check_for)}; using workspace root",
                 lsp.MessageType.Debug,
             )
-            return settings["workspaceFS"]
+            return workspace_fs
 
-    return settings["cwd"]
+    if document and document.path:
+        file_path = document.path
+        file_dir = os.path.dirname(file_path)
+        file_basename = os.path.basename(file_path)
+        file_stem, file_ext = os.path.splitext(file_basename)
+
+        substitutions = {
+            "${file}": file_path,
+            "${fileBasename}": file_basename,
+            "${fileBasenameNoExtension}": file_stem,
+            "${fileExtname}": file_ext,
+            "${fileDirname}": file_dir,
+            "${fileDirnameBasename}": os.path.basename(file_dir),
+            "${relativeFile}": os.path.relpath(file_path, workspace_fs),
+            "${relativeFileDirname}": os.path.relpath(file_dir, workspace_fs),
+            "${fileWorkspaceFolder}": workspace_fs,
+        }
+
+        for token, value in substitutions.items():
+            cwd = cwd.replace(token, value)
+    else:
+        # Without a document we cannot resolve file-related variables.
+        # Fall back to workspace root if any remain.
+        if "${file" in cwd or "${relativeFile" in cwd:
+            cwd = workspace_fs
+
+    return cwd
 
 
 def _run_tool_on_document(
