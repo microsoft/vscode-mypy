@@ -11,6 +11,7 @@ import pathlib
 import sys
 import sysconfig
 import tempfile
+import threading
 import traceback
 import uuid
 from dataclasses import dataclass
@@ -169,11 +170,30 @@ def did_open(params: lsp.DidOpenTextDocumentParams) -> None:
     _linting_helper(document)
 
 
+# Debounce save events to avoid redundant mypy invocations on rapid saves.
+_SAVE_DEBOUNCE_SEC = 0.5
+_save_timers: Dict[str, threading.Timer] = {}
+_save_lock = threading.Lock()
+
+
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
 def did_save(params: lsp.DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
-    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
-    _linting_helper(document)
+    uri = params.text_document.uri
+
+    def _run_lint():
+        with _save_lock:
+            _save_timers.pop(uri, None)
+        document = LSP_SERVER.workspace.get_text_document(uri)
+        _linting_helper(document)
+
+    with _save_lock:
+        existing = _save_timers.get(uri)
+        if existing is not None:
+            existing.cancel()
+        timer = threading.Timer(_SAVE_DEBOUNCE_SEC, _run_lint)
+        _save_timers[uri] = timer
+        timer.start()
 
 
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_CLOSE)
