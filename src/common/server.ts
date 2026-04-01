@@ -37,7 +37,10 @@ function parseEnvFile(envFilePath: string): Record<string, string> {
             if (eqIndex === -1) {
                 continue;
             }
-            const key = trimmed.substring(0, eqIndex).trim();
+            const key = trimmed
+                .substring(0, eqIndex)
+                .trim()
+                .replace(/^export\s+/, '');
             let value = trimmed.substring(eqIndex + 1).trim();
             // Strip surrounding quotes
             if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
@@ -71,9 +74,9 @@ async function createServer(
     const command = settings.interpreter[0];
     let cwd: string;
     if (settings.cwd === '${fileDirname}') {
-        cwd = Uri.parse(settings.workspace).fsPath;
+        cwd = Uri.file(settings.workspace).fsPath;
     } else if (settings.cwd === '${nearestConfig}') {
-        cwd = Uri.parse(settings.workspace).fsPath;
+        cwd = Uri.file(settings.workspace).fsPath;
     } else {
         cwd = settings.cwd;
     }
@@ -86,7 +89,7 @@ async function createServer(
     const newEnv = { ...process.env };
 
     // Apply env vars from python.envFile / .env
-    const workspacePath = Uri.parse(settings.workspace).fsPath;
+    const workspacePath = Uri.file(settings.workspace).fsPath;
     const envFileVars = getEnvFileVars(workspacePath);
     Object.assign(newEnv, envFileVars);
 
