@@ -33,10 +33,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     context.subscriptions.push(
         outputChannel.onDidChangeLogLevel(async (e) => {
-            await changeLogLevel(e, vscode.env.logLevel);
+            try {
+                await changeLogLevel(e, vscode.env.logLevel);
+            } catch (error) {
+                traceError(`Error changing log level: ${error}`);
+            }
         }),
         vscode.env.onDidChangeLogLevel(async (e) => {
-            await changeLogLevel(outputChannel.logLevel, e);
+            try {
+                await changeLogLevel(outputChannel.logLevel, e);
+            } catch (error) {
+                traceError(`Error changing log level: ${error}`);
+            }
         }),
     );
 
@@ -99,13 +107,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     logLegacySettings(serverId);
 
     setImmediate(async () => {
-        const interpreter = getInterpreterFromSetting(serverId);
-        if (interpreter === undefined || interpreter.length === 0) {
-            traceLog(`Python extension loading`);
-            await initializePython(context.subscriptions);
-            traceLog(`Python extension loaded`);
-        } else {
-            await runServer();
+        try {
+            const interpreter = getInterpreterFromSetting(serverId);
+            if (interpreter === undefined || interpreter.length === 0) {
+                traceLog(`Python extension loading`);
+                await initializePython(context.subscriptions);
+                traceLog(`Python extension loaded`);
+            } else {
+                await runServer();
+            }
+        } catch (error) {
+            traceError(`Extension activation error: ${error}`);
         }
     });
 }
