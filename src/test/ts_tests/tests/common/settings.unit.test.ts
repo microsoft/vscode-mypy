@@ -361,9 +361,7 @@ suite('Settings Tests', () => {
             configMock.setup((c) => c.get('showNotifications', 'off')).returns(() => 'off');
             configMock.setup((c) => c.get('cwd', TypeMoq.It.isAnyString())).returns(() => workspace1.uri.fsPath);
             configMock.setup((c) => c.get('ignorePatterns', [])).returns(() => []);
-            configMock
-                .setup((c) => c.get('daemonStatusFile', ''))
-                .returns(() => '/custom/dmypy_status.json');
+            configMock.setup((c) => c.get('daemonStatusFile', '')).returns(() => '/custom/dmypy_status.json');
             pythonConfigMock.setup((c) => c.get('analysis.extraPaths', [])).returns(() => []);
 
             const settings: ISettings = await getWorkspaceSettings('mypy', workspace1);
