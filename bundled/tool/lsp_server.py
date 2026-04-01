@@ -170,30 +170,16 @@ def did_open(params: lsp.DidOpenTextDocumentParams) -> None:
     _linting_helper(document)
 
 
-# Debounce save events to avoid redundant mypy invocations on rapid saves.
-_SAVE_DEBOUNCE_SEC = 0.5
-_save_timers: Dict[str, threading.Timer] = {}
-_save_lock = threading.Lock()
+# Track lint request versions per URI to discard stale results from superseded runs.
+_lint_versions: Dict[str, int] = {}
+_lint_versions_lock = threading.Lock()
 
 
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
 def did_save(params: lsp.DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
-    uri = params.text_document.uri
-
-    def _run_lint():
-        with _save_lock:
-            _save_timers.pop(uri, None)
-        document = LSP_SERVER.workspace.get_text_document(uri)
-        _linting_helper(document)
-
-    with _save_lock:
-        existing = _save_timers.get(uri)
-        if existing is not None:
-            existing.cancel()
-        timer = threading.Timer(_SAVE_DEBOUNCE_SEC, _run_lint)
-        _save_timers[uri] = timer
-        timer.start()
+    document = LSP_SERVER.workspace.get_text_document(params.text_document.uri)
+    _linting_helper(document)
 
 
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_CLOSE)
@@ -244,9 +230,7 @@ def _check_for_misconfiguration(stderr: str) -> None:
     as user-visible error notifications."""
     for pattern in _MISCONFIGURATION_PATTERNS:
         if pattern.lower() in stderr.lower():
-            log_error(
-                f"Mypy configuration issue detected:\r\n{stderr.strip()}"
-            )
+            log_error(f"Mypy configuration issue detected:\r\n{stderr.strip()}")
             return
 
 
@@ -284,11 +268,28 @@ def _linting_helper(document: TextDocument) -> None:
             _clear_diagnostics(document)
             return None
 
+        # Bump the version for this URI so any concurrent or queued lint for
+        # the same document can detect that it has been superseded.
+        with _lint_versions_lock:
+            lint_version = _lint_versions.get(document.uri, 0) + 1
+            _lint_versions[document.uri] = lint_version
+
         version = mypy_info.version
         if (version.major, version.minor) >= (0, 991) and sys.version_info >= (3, 8):
             extra_args += ["--show-error-end"]
 
         result = _run_tool_on_document(document, extra_args=extra_args)
+
+        # If a newer lint request arrived while we were running, discard
+        # these stale results — the newer request will publish its own.
+        with _lint_versions_lock:
+            if _lint_versions.get(document.uri, 0) != lint_version:
+                log_to_output(
+                    f"Discarding stale lint results for {document.uri} "
+                    f"(version {lint_version} superseded by "
+                    f"{_lint_versions[document.uri]})"
+                )
+                return []
 
         if result and result.stderr:
             _check_for_misconfiguration(result.stderr)
@@ -340,9 +341,7 @@ def _linting_helper(document: TextDocument) -> None:
         else:
             _clear_diagnostics(document)
     except Exception:
-        log_error(
-            f"Linting failed with error:\r\n{traceback.format_exc()}"
-        )
+        log_error(f"Linting failed with error:\r\n{traceback.format_exc()}")
     return []
 
 
