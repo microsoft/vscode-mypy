@@ -110,7 +110,7 @@ class MypyInfo:
 MYPY_INFO_TABLE: Dict[str, MypyInfo] = {}
 
 
-def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
+def get_mypy_info(settings: Dict[str, Any]) -> Optional[MypyInfo]:
     try:
         code_workspace = settings["workspaceFS"]
         if code_workspace not in MYPY_INFO_TABLE:
@@ -127,9 +127,12 @@ def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
             MYPY_INFO_TABLE[code_workspace] = MypyInfo(version, is_daemon)
         return MYPY_INFO_TABLE[code_workspace]
     except:  # noqa: E722
-        log_to_output(
-            f"Error while checking mypy executable:\r\n{traceback.format_exc()}"
+        log_error(
+            f"Mypy failed to run. Check that mypy is installed and the "
+            f"'mypy-type-checker.interpreter' or 'mypy-type-checker.path' "
+            f"settings are correct.\r\n{traceback.format_exc()}"
         )
+        return None
 
 
 def _run_unidentified_tool(
@@ -203,6 +206,30 @@ def _clear_diagnostics(document: TextDocument) -> None:
     )
 
 
+# Patterns that indicate mypy misconfiguration or missing dependencies
+_MISCONFIGURATION_PATTERNS = [
+    "No module named",
+    "missing imports",
+    "Cannot find implementation or library stub",
+    "mypy: error:",
+    "Could not find a config file",
+    "Error constructing plugin",
+    "plugin is not installed",
+    "invalid config",
+]
+
+
+def _check_for_misconfiguration(stderr: str) -> None:
+    """Check stderr for common misconfiguration patterns and surface them
+    as user-visible error notifications."""
+    for pattern in _MISCONFIGURATION_PATTERNS:
+        if pattern.lower() in stderr.lower():
+            log_error(
+                f"Mypy configuration issue detected:\r\n{stderr.strip()}"
+            )
+            return
+
+
 def _linting_helper(document: TextDocument) -> None:
     try:
         extra_args = []
@@ -232,11 +259,20 @@ def _linting_helper(document: TextDocument) -> None:
             _clear_diagnostics(document)
             return None
 
-        version = get_mypy_info(settings).version
+        mypy_info = get_mypy_info(settings)
+        if mypy_info is None:
+            _clear_diagnostics(document)
+            return None
+
+        version = mypy_info.version
         if (version.major, version.minor) >= (0, 991) and sys.version_info >= (3, 8):
             extra_args += ["--show-error-end"]
 
         result = _run_tool_on_document(document, extra_args=extra_args)
+
+        if result and result.stderr:
+            _check_for_misconfiguration(result.stderr)
+
         # Some mypy modes (e.g., non_interactive) emit diagnostics on stderr.
         # Prefer parsing combined output so we don't miss errors when stdout is empty.
         if result and (result.stdout or result.stderr):
@@ -284,11 +320,8 @@ def _linting_helper(document: TextDocument) -> None:
         else:
             _clear_diagnostics(document)
     except Exception:
-        LSP_SERVER.window_log_message(
-            lsp.LogMessageParams(
-                type=lsp.MessageType.Error,
-                message=f"Linting failed with error:\r\n{traceback.format_exc()}",
-            )
+        log_error(
+            f"Linting failed with error:\r\n{traceback.format_exc()}"
         )
     return []
 
@@ -458,7 +491,8 @@ def initialize(params: lsp.InitializeParams) -> None:
 def on_exit(_params: Optional[Any] = None) -> None:
     """Handle clean up on exit."""
     for settings in WORKSPACE_SETTINGS.values():
-        if get_mypy_info(settings).is_daemon:
+        mypy_info = get_mypy_info(settings)
+        if mypy_info and mypy_info.is_daemon:
             try:
                 _run_dmypy_command([], copy.deepcopy(settings), "kill")
             except Exception:
@@ -469,7 +503,8 @@ def on_exit(_params: Optional[Any] = None) -> None:
 def on_shutdown(_params: Optional[Any] = None) -> None:
     """Handle clean up on shutdown."""
     for settings in WORKSPACE_SETTINGS.values():
-        if get_mypy_info(settings).is_daemon:
+        mypy_info = get_mypy_info(settings)
+        if mypy_info and mypy_info.is_daemon:
             try:
                 _run_dmypy_command([], copy.deepcopy(settings), "stop")
             except Exception:
@@ -479,7 +514,10 @@ def on_shutdown(_params: Optional[Any] = None) -> None:
 def _log_version_info() -> None:
     for settings in WORKSPACE_SETTINGS.values():
         code_workspace = settings["workspaceFS"]
-        actual_version = get_mypy_info(settings).version
+        mypy_info = get_mypy_info(settings)
+        if mypy_info is None:
+            continue
+        actual_version = mypy_info.version
         min_version = parse_version(MIN_VERSION)
 
         if actual_version < min_version:
@@ -763,9 +801,11 @@ def _run_tool_on_document(
     if settings["path"]:
         argv = settings["path"]
     else:
+        mypy_info = get_mypy_info(settings)
         argv = settings["interpreter"] or [sys.executable]
-        argv += ["-m", "mypy.dmypy" if get_mypy_info(settings).is_daemon else "mypy"]
-    if get_mypy_info(settings).is_daemon:
+        argv += ["-m", "mypy.dmypy" if mypy_info and mypy_info.is_daemon else "mypy"]
+    mypy_info = get_mypy_info(settings)
+    if mypy_info and mypy_info.is_daemon:
         argv += _get_dmypy_args(settings, "run")
     argv += TOOL_ARGS + settings["args"] + extra_args
     if settings["reportingScope"] == "file":
@@ -796,7 +836,8 @@ def _run_tool_on_document(
 def _run_dmypy_command(
     extra_args: Sequence[str], settings: Dict[str, Any], command: str
 ) -> utils.RunResult:
-    if not get_mypy_info(settings).is_daemon:
+    mypy_info = get_mypy_info(settings)
+    if not mypy_info or not mypy_info.is_daemon:
         log_error(f"dmypy command called in non-daemon context: {command}")
         raise ValueError(f"dmypy command called in non-daemon context: {command}")
 
