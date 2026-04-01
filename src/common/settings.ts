@@ -42,6 +42,7 @@ function resolveVariables(
     const home = process.env.HOME || process.env.USERPROFILE;
     if (home) {
         substitutions.set('${userHome}', home);
+        substitutions.set('~', home);
     }
     if (workspace) {
         substitutions.set('${workspaceFolder}', workspace.uri.fsPath);
@@ -82,12 +83,17 @@ function getCwd(config: WorkspaceConfiguration, workspace: WorkspaceFolder): str
     return resolveVariables([cwd], workspace)[0];
 }
 
-function getExtraPaths(_namespace: string, workspace: WorkspaceFolder): string[] {
+function getExtraPaths(namespace: string, config: WorkspaceConfiguration, workspace: WorkspaceFolder): string[] {
+    const extraPaths = config.get<string[]>('extraPaths', []) ?? [];
+    if (extraPaths.length > 0) {
+        return extraPaths;
+    }
+
     const legacyConfig = getConfiguration('python', workspace.uri);
-    const legacyExtraPaths = legacyConfig.get<string[]>('analysis.extraPaths', []);
+    const legacyExtraPaths = legacyConfig.get<string[]>('analysis.extraPaths', []) ?? [];
 
     if (legacyExtraPaths.length > 0) {
-        traceLog('Using cwd from `python.analysis.extraPaths`.');
+        traceLog('Using extraPaths from `python.analysis.extraPaths`.');
     }
     return legacyExtraPaths;
 }
@@ -107,7 +113,7 @@ export async function getWorkspaceSettings(
         }
     }
 
-    const extraPaths = getExtraPaths(namespace, workspace);
+    const extraPaths = getExtraPaths(namespace, config, workspace);
     const workspaceSetting = {
         cwd: getCwd(config, workspace),
         workspace: workspace.uri.toString(),
@@ -173,6 +179,7 @@ export function checkIfConfigurationChanged(e: ConfigurationChangeEvent, namespa
         `${namespace}.preferDaemon`,
         `${namespace}.ignorePatterns`,
         `${namespace}.daemonStatusFile`,
+        `${namespace}.extraPaths`,
         'python.analysis.extraPaths',
     ];
     const changed = settings.map((s) => e.affectsConfiguration(s));

@@ -149,6 +149,15 @@
                         "experimental"
                     ]
                 },
+                "mypy-type-checker.extraPaths": {
+                    "default": [],
+                    "markdownDescription": "%settings.extraPaths.description%",
+                    "items": {
+                        "type": "string"
+                    },
+                    "scope": "resource",
+                    "type": "array"
+                },
                 "mypy-type-checker.reportingScope": {
                     "default": "file",
                     "markdownDescription": "%settings.reportingScope.description%",
