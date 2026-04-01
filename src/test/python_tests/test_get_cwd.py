@@ -278,3 +278,69 @@ def test_nearest_config_falls_back_when_no_config_found():
         doc = _make_doc(doc_path)
         result = lsp_server.get_cwd(settings, doc)
         assert result == workspace
+
+
+def test_nearest_config_finds_dot_mypy_ini():
+    """${nearestConfig} finds .mypy.ini in parent directory."""
+    with tempfile.TemporaryDirectory() as workspace:
+        src_dir = os.path.join(workspace, "src")
+        os.makedirs(src_dir)
+        config_file = os.path.join(workspace, ".mypy.ini")
+        pathlib.Path(config_file).touch()
+        doc_path = os.path.join(src_dir, "foo.py")
+        pathlib.Path(doc_path).touch()
+
+        settings = {"workspaceFS": workspace, "cwd": "${nearestConfig}"}
+        doc = _make_doc(doc_path)
+        result = lsp_server.get_cwd(settings, doc)
+        assert result == workspace
+
+
+def test_nearest_config_finds_pyproject_toml():
+    """${nearestConfig} finds pyproject.toml in parent directory."""
+    with tempfile.TemporaryDirectory() as workspace:
+        src_dir = os.path.join(workspace, "src")
+        os.makedirs(src_dir)
+        config_file = os.path.join(workspace, "pyproject.toml")
+        pathlib.Path(config_file).touch()
+        doc_path = os.path.join(src_dir, "foo.py")
+        pathlib.Path(doc_path).touch()
+
+        settings = {"workspaceFS": workspace, "cwd": "${nearestConfig}"}
+        doc = _make_doc(doc_path)
+        result = lsp_server.get_cwd(settings, doc)
+        assert result == workspace
+
+
+def test_nearest_config_finds_setup_cfg():
+    """${nearestConfig} finds setup.cfg in parent directory."""
+    with tempfile.TemporaryDirectory() as workspace:
+        src_dir = os.path.join(workspace, "src")
+        os.makedirs(src_dir)
+        config_file = os.path.join(workspace, "setup.cfg")
+        pathlib.Path(config_file).touch()
+        doc_path = os.path.join(src_dir, "foo.py")
+        pathlib.Path(doc_path).touch()
+
+        settings = {"workspaceFS": workspace, "cwd": "${nearestConfig}"}
+        doc = _make_doc(doc_path)
+        result = lsp_server.get_cwd(settings, doc)
+        assert result == workspace
+
+
+def test_nearest_config_prefers_closest_config():
+    """${nearestConfig} picks the nearest directory containing any config file."""
+    with tempfile.TemporaryDirectory() as workspace:
+        inner = os.path.join(workspace, "pkg")
+        src_dir = os.path.join(inner, "sub")
+        os.makedirs(src_dir)
+        # Place setup.cfg in workspace root and .mypy.ini closer to the doc
+        pathlib.Path(os.path.join(workspace, "setup.cfg")).touch()
+        pathlib.Path(os.path.join(inner, ".mypy.ini")).touch()
+        doc_path = os.path.join(src_dir, "foo.py")
+        pathlib.Path(doc_path).touch()
+
+        settings = {"workspaceFS": workspace, "cwd": "${nearestConfig}"}
+        doc = _make_doc(doc_path)
+        result = lsp_server.get_cwd(settings, doc)
+        assert result == inner
