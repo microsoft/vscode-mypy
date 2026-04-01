@@ -76,6 +76,7 @@ def _setup_mocks():
     )
 
     mock_lsp_utils = types.ModuleType("lsp_utils")
+    mock_lsp_utils.normalize_path = lambda p: str(pathlib.Path(p).resolve())
 
     for _mod_name, _mod in [
         ("pygls", mock_pygls),
@@ -91,6 +92,12 @@ def _setup_mocks():
     ]:
         if _mod_name not in sys.modules:
             sys.modules[_mod_name] = _mod
+
+    # Ensure normalize_path is available even if lsp_utils was mocked by another test
+    if not hasattr(sys.modules["lsp_utils"], "normalize_path"):
+        sys.modules["lsp_utils"].normalize_path = lambda p: str(
+            pathlib.Path(p).resolve()
+        )
 
     import packaging.version as _pv
 

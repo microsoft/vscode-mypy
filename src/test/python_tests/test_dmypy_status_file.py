@@ -128,12 +128,14 @@ def _clear_dmypy_cache():
 def test_dmypy_args_uses_custom_status_file():
     """When daemonStatusFile is set, _get_dmypy_args uses it instead of generating one."""
     _clear_dmypy_cache()
-    settings = _make_settings("/workspace/project", "/custom/status.json")
-    result = lsp_server._get_dmypy_args(settings, "run")
-    assert "--status-file" in result
-    idx = result.index("--status-file")
-    assert result[idx + 1] == "/custom/status.json"
-    _clear_dmypy_cache()
+    try:
+        settings = _make_settings("/workspace/project", "/custom/status.json")
+        result = lsp_server._get_dmypy_args(settings, "run")
+        assert "--status-file" in result
+        idx = result.index("--status-file")
+        assert result[idx + 1] == "/custom/status.json"
+    finally:
+        _clear_dmypy_cache()
 
 
 def test_dmypy_args_generates_status_file_when_not_set():
@@ -158,30 +160,36 @@ def test_dmypy_args_generates_status_file_when_not_set():
 def test_dmypy_args_run_includes_separator():
     """The 'run' command includes a '--' separator after the command."""
     _clear_dmypy_cache()
-    settings = _make_settings("/workspace/sep_test", "/my/status.json")
-    result = lsp_server._get_dmypy_args(settings, "run")
-    assert result[-2:] == ["run", "--"]
-    _clear_dmypy_cache()
+    try:
+        settings = _make_settings("/workspace/sep_test", "/my/status.json")
+        result = lsp_server._get_dmypy_args(settings, "run")
+        assert result[-2:] == ["run", "--"]
+    finally:
+        _clear_dmypy_cache()
 
 
 def test_dmypy_args_stop_no_separator():
     """Control commands (stop, kill, etc.) do not include the '--' separator."""
     _clear_dmypy_cache()
-    settings = _make_settings("/workspace/stop_test", "/my/status.json")
-    result = lsp_server._get_dmypy_args(settings, "stop")
-    assert result[-1] == "stop"
-    assert "--" not in result[result.index("stop") :]
-    _clear_dmypy_cache()
+    try:
+        settings = _make_settings("/workspace/stop_test", "/my/status.json")
+        result = lsp_server._get_dmypy_args(settings, "stop")
+        assert result[-1] == "stop"
+        assert "--" not in result[result.index("stop") :]
+    finally:
+        _clear_dmypy_cache()
 
 
 def test_dmypy_args_caches_per_workspace():
     """DMYPY_ARGS are cached per workspace; the status file is set once."""
     _clear_dmypy_cache()
-    settings = _make_settings("/workspace/cached", "/cached/status.json")
-    result1 = lsp_server._get_dmypy_args(settings, "run")
-    result2 = lsp_server._get_dmypy_args(settings, "check")
-    # Both should use the same status file
-    idx1 = result1.index("--status-file")
-    idx2 = result2.index("--status-file")
-    assert result1[idx1 + 1] == result2[idx2 + 1] == "/cached/status.json"
-    _clear_dmypy_cache()
+    try:
+        settings = _make_settings("/workspace/cached", "/cached/status.json")
+        result1 = lsp_server._get_dmypy_args(settings, "run")
+        result2 = lsp_server._get_dmypy_args(settings, "check")
+        # Both should use the same status file
+        idx1 = result1.index("--status-file")
+        idx2 = result2.index("--status-file")
+        assert result1[idx1 + 1] == result2[idx2 + 1] == "/cached/status.json"
+    finally:
+        _clear_dmypy_cache()
