@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+import * as dotenv from 'dotenv';
 import * as fsapi from 'fs-extra';
 import * as path from 'path';
 import { Disposable, env, l10n, LanguageStatusSeverity, LogOutputChannel, Uri } from 'vscode';
@@ -21,47 +22,23 @@ import { getConfiguration } from './vscodeapi';
 
 export type IInitOptions = { settings: ISettings[]; globalSettings: ISettings };
 
-function parseEnvFile(envFilePath: string): Record<string, string> {
-    const envVars: Record<string, string> = {};
-    if (!fsapi.existsSync(envFilePath)) {
-        return envVars;
-    }
-    try {
-        const content = fsapi.readFileSync(envFilePath, 'utf-8');
-        for (const line of content.split(/\r?\n/)) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith('#')) {
-                continue;
-            }
-            const eqIndex = trimmed.indexOf('=');
-            if (eqIndex === -1) {
-                continue;
-            }
-            const key = trimmed
-                .substring(0, eqIndex)
-                .trim()
-                .replace(/^export\s+/, '');
-            let value = trimmed.substring(eqIndex + 1).trim();
-            // Strip surrounding quotes
-            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-                value = value.slice(1, -1);
-            }
-            if (key) {
-                envVars[key] = value;
-            }
-        }
-    } catch (ex) {
-        traceError(`Failed to parse env file ${envFilePath}: ${ex}`);
-    }
-    return envVars;
-}
-
 function getEnvFileVars(workspacePath: string): Record<string, string> {
     const pythonConfig = getConfiguration('python');
     let envFile = pythonConfig.get<string>('envFile', '${workspaceFolder}/.env');
     envFile = envFile.replace('${workspaceFolder}', workspacePath);
     traceLog(`Using envFile: ${envFile}`);
-    return parseEnvFile(envFile);
+
+    if (!fsapi.existsSync(envFile)) {
+        return {};
+    }
+
+    try {
+        const content = fsapi.readFileSync(envFile, 'utf-8');
+        return dotenv.parse(content);
+    } catch (ex) {
+        traceError(`Failed to parse env file ${envFile}: ${ex}`);
+        return {};
+    }
 }
 
 async function createServer(
