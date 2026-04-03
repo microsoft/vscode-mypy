@@ -74,9 +74,9 @@ async function createServer(
     const command = settings.interpreter[0];
     let cwd: string;
     if (settings.cwd === '${fileDirname}') {
-        cwd = Uri.file(settings.workspace).fsPath;
+        cwd = Uri.parse(settings.workspace).fsPath;
     } else if (settings.cwd === '${nearestConfig}') {
-        cwd = Uri.file(settings.workspace).fsPath;
+        cwd = Uri.parse(settings.workspace).fsPath;
     } else {
         cwd = settings.cwd;
     }
@@ -89,7 +89,7 @@ async function createServer(
     const newEnv = { ...process.env };
 
     // Apply env vars from python.envFile / .env
-    const workspacePath = Uri.file(settings.workspace).fsPath;
+    const workspacePath = Uri.parse(settings.workspace).fsPath;
     const envFileVars = getEnvFileVars(workspacePath);
     Object.assign(newEnv, envFileVars);
 
