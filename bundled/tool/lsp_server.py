@@ -296,6 +296,11 @@ def _linting_helper(document: TextDocument) -> None:
 
         result = _run_tool_on_document(document, extra_args=extra_args)
 
+        # Check for misconfiguration before staleness check so warnings
+        # are surfaced even if this run is superseded by a newer one.
+        if result and result.stderr:
+            _check_for_misconfiguration(result.stderr)
+
         # If a newer lint request arrived while we were running, discard
         # these stale results — the newer request will publish its own.
         with _lint_versions_lock:
@@ -306,9 +311,6 @@ def _linting_helper(document: TextDocument) -> None:
                     f"{_lint_versions[document.uri]})"
                 )
                 return []
-
-        if result and result.stderr:
-            _check_for_misconfiguration(result.stderr)
 
         # Some mypy modes (e.g., non_interactive) emit diagnostics on stderr.
         # Prefer parsing combined output so we don't miss errors when stdout is empty.
