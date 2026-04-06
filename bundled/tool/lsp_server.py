@@ -218,13 +218,13 @@ def _clear_diagnostics(document: TextDocument) -> None:
     )
 
 
-# Patterns that indicate mypy misconfiguration or missing dependencies.
-# Matched case-insensitively against individual stderr lines to reduce false
-# positives from stack traces or plugin debug output.
+# Patterns that indicate mypy misconfiguration or startup errors.
+# Only patterns that are unambiguously mypy infrastructure errors, not
+# normal type-checking diagnostics for user code.  "No module named",
+# "missing imports", and "Cannot find implementation or library stub" are
+# excluded because they are routine diagnostic messages (especially in
+# daemon mode where diagnostics are emitted on stderr).
 _MISCONFIGURATION_PATTERNS = [
-    "No module named",
-    "missing imports",
-    "Cannot find implementation or library stub",
     "mypy: error:",
     "Could not find a config file",
     "Error constructing plugin",
