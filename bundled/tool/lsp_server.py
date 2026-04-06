@@ -171,6 +171,9 @@ def did_open(params: lsp.DidOpenTextDocumentParams) -> None:
 
 
 # Track lint request versions per URI to discard stale results from superseded runs.
+# This is a deduplication mechanism (not debounce): each save spawns a lint process,
+# but only the latest result is published. Rapid saves produce multiple runs where
+# only the last one's output is kept.
 _lint_versions: Dict[str, int] = {}
 _lint_versions_lock = threading.Lock()
 
