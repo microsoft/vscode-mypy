@@ -25,7 +25,7 @@ export type IInitOptions = { settings: ISettings[]; globalSettings: ISettings };
 function getEnvFileVars(workspacePath: string): Record<string, string> {
     const pythonConfig = getConfiguration('python');
     let envFile = pythonConfig.get<string>('envFile', '${workspaceFolder}/.env');
-    envFile = envFile.replace('${workspaceFolder}', workspacePath);
+    envFile = envFile.split('${workspaceFolder}').join(workspacePath);
     traceLog(`Using envFile: ${envFile}`);
 
     if (!fsapi.existsSync(envFile)) {
