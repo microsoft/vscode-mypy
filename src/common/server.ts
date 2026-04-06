@@ -23,7 +23,7 @@ import { getConfiguration } from './vscodeapi';
 export type IInitOptions = { settings: ISettings[]; globalSettings: ISettings };
 
 function getEnvFileVars(workspacePath: string): Record<string, string> {
-    const pythonConfig = getConfiguration('python');
+    const pythonConfig = getConfiguration('python', Uri.file(workspacePath));
     let envFile = pythonConfig.get<string>('envFile', '${workspaceFolder}/.env');
     envFile = envFile.split('${workspaceFolder}').join(workspacePath);
     traceLog(`Using envFile: ${envFile}`);
