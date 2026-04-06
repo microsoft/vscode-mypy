@@ -215,7 +215,9 @@ def _clear_diagnostics(document: TextDocument) -> None:
     )
 
 
-# Patterns that indicate mypy misconfiguration or missing dependencies
+# Patterns that indicate mypy misconfiguration or missing dependencies.
+# Matched case-insensitively against individual stderr lines to reduce false
+# positives from stack traces or plugin debug output.
 _MISCONFIGURATION_PATTERNS = [
     "No module named",
     "missing imports",
@@ -227,14 +229,22 @@ _MISCONFIGURATION_PATTERNS = [
     "invalid config",
 ]
 
+# Track last reported misconfiguration to suppress duplicates
+_last_misconfiguration_msg: Dict[str, str] = {}
+
 
 def _check_for_misconfiguration(stderr: str) -> None:
     """Check stderr for common misconfiguration patterns and surface them
-    as user-visible error notifications."""
-    for pattern in _MISCONFIGURATION_PATTERNS:
-        if pattern.lower() in stderr.lower():
-            log_error(f"Mypy configuration issue detected:\r\n{stderr.strip()}")
-            return
+    as user-visible error notifications. Only reports each unique message once."""
+    for line in stderr.splitlines():
+        line_lower = line.lower()
+        for pattern in _MISCONFIGURATION_PATTERNS:
+            if pattern.lower() in line_lower:
+                msg = stderr.strip()
+                if msg != _last_misconfiguration_msg.get("msg"):
+                    _last_misconfiguration_msg["msg"] = msg
+                    log_error(f"Mypy configuration issue detected:\r\n{msg}")
+                return
 
 
 def _linting_helper(document: TextDocument) -> None:
