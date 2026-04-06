@@ -118,6 +118,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             }
         } catch (error) {
             traceError(`Extension activation error: ${error}`);
+            vscode.window.showErrorMessage(`Mypy extension failed to start: ${error}`);
         }
     });
 }
