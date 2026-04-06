@@ -817,13 +817,13 @@ def _run_tool_on_document(
 
     cwd = get_cwd(settings, document)
 
+    mypy_info = get_mypy_info(settings)
+
     if settings["path"]:
         argv = settings["path"]
     else:
-        mypy_info = get_mypy_info(settings)
         argv = settings["interpreter"] or [sys.executable]
         argv += ["-m", "mypy.dmypy" if mypy_info and mypy_info.is_daemon else "mypy"]
-    mypy_info = get_mypy_info(settings)
     if mypy_info and mypy_info.is_daemon:
         argv += _get_dmypy_args(settings, "run")
     argv += TOOL_ARGS + settings["args"] + extra_args
