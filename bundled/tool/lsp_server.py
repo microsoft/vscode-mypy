@@ -193,6 +193,9 @@ def did_close(params: lsp.DidCloseTextDocumentParams) -> None:
     if settings["reportingScope"] == "file":
         # Publishing empty diagnostics to clear the entries for this file.
         _clear_diagnostics(document)
+    # Clean up lint version tracking for closed documents
+    with _lint_versions_lock:
+        _lint_versions.pop(document.uri, None)
 
 
 def _is_empty_diagnostics(
