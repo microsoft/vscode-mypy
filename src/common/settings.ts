@@ -32,6 +32,19 @@ export function getExtensionSettings(namespace: string, includeInterpreter?: boo
     return Promise.all(getWorkspaceFolders().map((w) => getWorkspaceSettings(namespace, w, includeInterpreter)));
 }
 
+function expandTilde(value: string): string {
+    const home = process.env.HOME || process.env.USERPROFILE;
+    if (home) {
+        if (value === '~') {
+            return home;
+        }
+        if (value.startsWith('~/') || value.startsWith('~\\')) {
+            return home + value.slice(1);
+        }
+    }
+    return value;
+}
+
 function resolveVariables(
     value: string[],
     workspace?: WorkspaceFolder,
@@ -42,7 +55,6 @@ function resolveVariables(
     const home = process.env.HOME || process.env.USERPROFILE;
     if (home) {
         substitutions.set('${userHome}', home);
-        substitutions.set('~', home);
     }
     if (workspace) {
         substitutions.set('${workspaceFolder}', workspace.uri.fsPath);
@@ -115,16 +127,16 @@ export async function getWorkspaceSettings(
 
     const extraPaths = getExtraPaths(namespace, config, workspace);
     const workspaceSetting = {
-        cwd: getCwd(config, workspace),
+        cwd: expandTilde(getCwd(config, workspace)),
         workspace: workspace.uri.toString(),
         args: resolveVariables(config.get<string[]>('args', []), workspace),
         severity: config.get<Record<string, string>>('severity', DEFAULT_SEVERITY),
-        path: resolveVariables(config.get<string[]>('path', []), workspace, interpreter),
+        path: resolveVariables(config.get<string[]>('path', []), workspace, interpreter).map(expandTilde),
         ignorePatterns: resolveVariables(config.get<string[]>('ignorePatterns', []), workspace),
-        interpreter: resolveVariables(interpreter, workspace),
+        interpreter: resolveVariables(interpreter, workspace).map(expandTilde),
         importStrategy: config.get<string>('importStrategy', 'useBundled'),
         showNotifications: config.get<string>('showNotifications', 'off'),
-        extraPaths: resolveVariables(extraPaths, workspace),
+        extraPaths: resolveVariables(extraPaths, workspace).map(expandTilde),
         reportingScope: config.get<string>('reportingScope', 'file'),
         preferDaemon: config.get<boolean>('preferDaemon', true),
         daemonStatusFile: config.get<string>('daemonStatusFile', ''),
