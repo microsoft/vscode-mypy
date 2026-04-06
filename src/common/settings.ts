@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+import * as path from 'path';
 import { ConfigurationChangeEvent, ConfigurationScope, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
 import { traceLog, traceWarn } from './logging';
 import { getInterpreterDetails } from './python';
@@ -39,7 +40,7 @@ function expandTilde(value: string): string {
             return home;
         }
         if (value.startsWith('~/') || value.startsWith('~\\')) {
-            return home + value.slice(1);
+            return path.join(home, value.slice(2));
         }
     }
     return value;
