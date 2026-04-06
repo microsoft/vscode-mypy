@@ -95,7 +95,7 @@ function getCwd(config: WorkspaceConfiguration, workspace: WorkspaceFolder): str
     return resolveVariables([cwd], workspace)[0];
 }
 
-function getExtraPaths(namespace: string, config: WorkspaceConfiguration, workspace: WorkspaceFolder): string[] {
+function getExtraPaths(_namespace: string, config: WorkspaceConfiguration, workspace: WorkspaceFolder): string[] {
     const extraPaths = config.get<string[]>('extraPaths', []) ?? [];
     if (extraPaths.length > 0) {
         return extraPaths;
