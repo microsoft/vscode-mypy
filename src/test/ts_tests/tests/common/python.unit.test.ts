@@ -3,8 +3,8 @@
 
 import { assert } from 'chai';
 import * as sinon from 'sinon';
-import { PythonEnvironmentApi, PythonEnvironments } from '@vscode/python-environments';
-import { commands, Disposable, Event, EventEmitter, extensions, Uri } from 'vscode';
+import { PythonEnvironments } from '@vscode/python-environments';
+import { EventEmitter, extensions, Uri } from 'vscode';
 import { PythonExtension } from '@vscode/python-extension';
 import { getInterpreterDetails, resetCachedApis } from '../../../../common/python';
 
@@ -224,6 +224,7 @@ suite('Python Interpreter Resolution Tests', () => {
 
         assert.isDefined(result.path);
         assert.strictEqual(result.path![0], interpreterUri.fsPath);
+        assert.isTrue(envsApiStub.calledOnce);
         assert.isTrue(mockLegacyApi.environments.resolveEnvironment.calledOnce);
 
         envsApiStub.restore();
