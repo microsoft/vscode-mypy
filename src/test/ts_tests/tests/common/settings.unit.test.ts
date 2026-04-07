@@ -8,7 +8,7 @@ import * as TypeMoq from 'typemoq';
 import { Uri, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
 import { EXTENSION_ROOT_DIR } from '../../../../common/constants';
 import * as python from '../../../../common/python';
-import { ISettings, getWorkspaceSettings } from '../../../../common/settings';
+import { ISettings, checkIfConfigurationChanged, getWorkspaceSettings } from '../../../../common/settings';
 import * as vscodeapi from '../../../../common/vscodeapi';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -24,7 +24,7 @@ suite('Settings Tests', () => {
         let getWorkspaceFoldersStub: sinon.SinonStub;
         let configMock: TypeMoq.IMock<WorkspaceConfiguration>;
         let pythonConfigMock: TypeMoq.IMock<WorkspaceConfiguration>;
-        let workspace1: WorkspaceFolder = {
+        const workspace1: WorkspaceFolder = {
             uri: Uri.file(path.join(EXTENSION_ROOT_DIR, 'src', 'test', 'testWorkspace', 'workspace1')),
             name: 'workspace1',
             index: 0,
@@ -284,6 +284,89 @@ suite('Settings Tests', () => {
 
             configMock.verifyAll();
             pythonConfigMock.verifyAll();
+        });
+    });
+
+    suite('checkIfConfigurationChanged tests', () => {
+        test('detects daemonStatusFile changes', () => {
+            const event = {
+                affectsConfiguration: (section: string) => section === 'mypy.daemonStatusFile',
+            } as any;
+            const result = checkIfConfigurationChanged(event, 'mypy');
+            assert.isTrue(result);
+        });
+
+        test('returns false when unrelated setting changes', () => {
+            const event = {
+                affectsConfiguration: (_section: string) => false,
+            } as any;
+            const result = checkIfConfigurationChanged(event, 'mypy');
+            assert.isFalse(result);
+        });
+    });
+
+    suite('getWorkspaceSettings daemonStatusFile tests', () => {
+        let getConfigurationStub: sinon.SinonStub;
+        let getInterpreterDetailsStub: sinon.SinonStub;
+        let getWorkspaceFoldersStub: sinon.SinonStub;
+        let configMock: TypeMoq.IMock<WorkspaceConfiguration>;
+        let pythonConfigMock: TypeMoq.IMock<WorkspaceConfiguration>;
+        const workspace1: WorkspaceFolder = {
+            uri: Uri.file(path.join(EXTENSION_ROOT_DIR, 'src', 'test', 'testWorkspace', 'workspace1')),
+            name: 'workspace1',
+            index: 0,
+        };
+
+        setup(() => {
+            getConfigurationStub = sinon.stub(vscodeapi, 'getConfiguration');
+            getInterpreterDetailsStub = sinon.stub(python, 'getInterpreterDetails');
+            configMock = TypeMoq.Mock.ofType<WorkspaceConfiguration>();
+            pythonConfigMock = TypeMoq.Mock.ofType<WorkspaceConfiguration>();
+            getConfigurationStub.callsFake((namespace: string, _uri: Uri) => {
+                if (namespace.startsWith('mypy')) {
+                    return configMock.object;
+                }
+                return pythonConfigMock.object;
+            });
+            getInterpreterDetailsStub.resolves({ path: undefined });
+            getWorkspaceFoldersStub = sinon.stub(vscodeapi, 'getWorkspaceFolders');
+            getWorkspaceFoldersStub.returns([workspace1]);
+        });
+
+        teardown(() => {
+            sinon.restore();
+        });
+
+        test('daemonStatusFile is included in settings with default empty string', async () => {
+            configMock.setup((c) => c.get('args', [])).returns(() => []);
+            configMock.setup((c) => c.get('path', [])).returns(() => []);
+            configMock.setup((c) => c.get('severity', TypeMoq.It.isAny())).returns(() => DEFAULT_SEVERITY);
+            configMock.setup((c) => c.get('importStrategy', 'useBundled')).returns(() => 'useBundled');
+            configMock.setup((c) => c.get('showNotifications', 'off')).returns(() => 'off');
+            configMock.setup((c) => c.get('cwd', TypeMoq.It.isAnyString())).returns(() => workspace1.uri.fsPath);
+            configMock.setup((c) => c.get('ignorePatterns', [])).returns(() => []);
+            configMock.setup((c) => c.get('daemonStatusFile', '')).returns(() => '');
+            pythonConfigMock.setup((c) => c.get('analysis.extraPaths', [])).returns(() => []);
+
+            const settings: ISettings = await getWorkspaceSettings('mypy', workspace1);
+
+            assert.strictEqual(settings.daemonStatusFile, '');
+        });
+
+        test('daemonStatusFile with custom value', async () => {
+            configMock.setup((c) => c.get('args', [])).returns(() => []);
+            configMock.setup((c) => c.get('path', [])).returns(() => []);
+            configMock.setup((c) => c.get('severity', TypeMoq.It.isAny())).returns(() => DEFAULT_SEVERITY);
+            configMock.setup((c) => c.get('importStrategy', 'useBundled')).returns(() => 'useBundled');
+            configMock.setup((c) => c.get('showNotifications', 'off')).returns(() => 'off');
+            configMock.setup((c) => c.get('cwd', TypeMoq.It.isAnyString())).returns(() => workspace1.uri.fsPath);
+            configMock.setup((c) => c.get('ignorePatterns', [])).returns(() => []);
+            configMock.setup((c) => c.get('daemonStatusFile', '')).returns(() => '/custom/dmypy_status.json');
+            pythonConfigMock.setup((c) => c.get('analysis.extraPaths', [])).returns(() => []);
+
+            const settings: ISettings = await getWorkspaceSettings('mypy', workspace1);
+
+            assert.strictEqual(settings.daemonStatusFile, '/custom/dmypy_status.json');
         });
     });
 });
