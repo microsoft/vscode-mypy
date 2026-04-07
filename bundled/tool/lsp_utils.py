@@ -80,9 +80,12 @@ _stdlib_paths = set(
 )
 
 
-def normalize_path(file_path: str) -> str:
+def normalize_path(file_path: str, resolve_symlinks: bool = True) -> str:
     """Returns normalized path."""
-    return str(pathlib.Path(file_path).resolve())
+    path = pathlib.Path(file_path)
+    if resolve_symlinks:
+        path = path.resolve()
+    return str(path)
 
 
 def is_same_path(file_path1: str, file_path2: str) -> bool:
