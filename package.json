@@ -226,7 +226,7 @@
     "dependencies": {
         "@vscode/python-environments": "https://pkgs.dev.azure.com/azure-public/vside/_packaging/msft_consumption/npm/registry/@vscode/python-environments/-/python-environments-1.0.0.tgz",
         "@vscode/python-extension": "^1.0.6",
-        "dotenv": "^17.4.0",
+        "dotenv": "^17.4.1",
         "fs-extra": "^11.3.1",
         "minimatch": "^10.2.4",
         "semver": "^7.7.4",
