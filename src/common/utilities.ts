@@ -74,6 +74,8 @@ export function getDocumentSelector(): DocumentSelector {
         : [
               { scheme: 'file', language: 'python' },
               { scheme: 'untitled', language: 'python' },
+              { scheme: 'vscode-notebook', language: 'python' },
+              { scheme: 'vscode-notebook-cell', language: 'python' },
           ];
 }
 
