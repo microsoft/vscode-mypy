@@ -187,11 +187,18 @@ export async function getInterpreterDetails(resource?: Uri): Promise<IInterprete
 
     // Fall back to legacy ms-python.python extension API
     const api = await getPythonExtensionAPI();
-    const environment = await api?.environments.resolveEnvironment(
-        api?.environments.getActiveEnvironmentPath(resource),
-    );
-    if (environment?.executable.uri && checkVersion(environment)) {
-        return { path: [environment?.executable.uri.fsPath], resource };
+    if (!api) {
+        return { path: undefined, resource };
+    }
+    try {
+        const environment = await api.environments.resolveEnvironment(
+            api.environments.getActiveEnvironmentPath(resource),
+        );
+        if (environment?.executable.uri && checkVersion(environment)) {
+            return { path: [environment.executable.uri.fsPath], resource };
+        }
+    } catch (error) {
+        traceError('Error resolving Python environment via legacy API: ', error);
     }
     return { path: undefined, resource };
 }

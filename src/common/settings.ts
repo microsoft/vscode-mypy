@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+import * as path from 'path';
 import { ConfigurationChangeEvent, ConfigurationScope, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
 import { traceLog, traceWarn } from './logging';
 import { getInterpreterDetails } from './python';
@@ -30,6 +31,19 @@ export interface ISettings {
 
 export function getExtensionSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings[]> {
     return Promise.all(getWorkspaceFolders().map((w) => getWorkspaceSettings(namespace, w, includeInterpreter)));
+}
+
+function expandTilde(value: string): string {
+    const home = process.env.HOME || process.env.USERPROFILE;
+    if (home) {
+        if (value === '~') {
+            return home;
+        }
+        if (value.startsWith('~/') || value.startsWith('~\\')) {
+            return path.join(home, value.slice(2));
+        }
+    }
+    return value;
 }
 
 function resolveVariables(
@@ -82,12 +96,17 @@ function getCwd(config: WorkspaceConfiguration, workspace: WorkspaceFolder): str
     return resolveVariables([cwd], workspace)[0];
 }
 
-function getExtraPaths(_namespace: string, workspace: WorkspaceFolder): string[] {
+function getExtraPaths(_namespace: string, config: WorkspaceConfiguration, workspace: WorkspaceFolder): string[] {
+    const extraPaths = config.get<string[]>('extraPaths', []) ?? [];
+    if (extraPaths.length > 0) {
+        return extraPaths;
+    }
+
     const legacyConfig = getConfiguration('python', workspace.uri);
-    const legacyExtraPaths = legacyConfig.get<string[]>('analysis.extraPaths', []);
+    const legacyExtraPaths = legacyConfig.get<string[]>('analysis.extraPaths', []) ?? [];
 
     if (legacyExtraPaths.length > 0) {
-        traceLog('Using cwd from `python.analysis.extraPaths`.');
+        traceLog('Using extraPaths from `python.analysis.extraPaths`.');
     }
     return legacyExtraPaths;
 }
@@ -107,18 +126,18 @@ export async function getWorkspaceSettings(
         }
     }
 
-    const extraPaths = getExtraPaths(namespace, workspace);
+    const extraPaths = getExtraPaths(namespace, config, workspace);
     const workspaceSetting = {
-        cwd: getCwd(config, workspace),
+        cwd: expandTilde(getCwd(config, workspace)),
         workspace: workspace.uri.toString(),
         args: resolveVariables(config.get<string[]>('args', []), workspace),
         severity: config.get<Record<string, string>>('severity', DEFAULT_SEVERITY),
-        path: resolveVariables(config.get<string[]>('path', []), workspace, interpreter),
+        path: resolveVariables(config.get<string[]>('path', []), workspace, interpreter).map(expandTilde),
         ignorePatterns: resolveVariables(config.get<string[]>('ignorePatterns', []), workspace),
-        interpreter: resolveVariables(interpreter, workspace),
+        interpreter: resolveVariables(interpreter, workspace).map(expandTilde),
         importStrategy: config.get<string>('importStrategy', 'useBundled'),
         showNotifications: config.get<string>('showNotifications', 'off'),
-        extraPaths: resolveVariables(extraPaths, workspace),
+        extraPaths: resolveVariables(extraPaths, workspace).map(expandTilde),
         reportingScope: config.get<string>('reportingScope', 'file'),
         preferDaemon: config.get<boolean>('preferDaemon', true),
         daemonStatusFile: config.get<string>('daemonStatusFile', ''),
@@ -173,6 +192,7 @@ export function checkIfConfigurationChanged(e: ConfigurationChangeEvent, namespa
         `${namespace}.preferDaemon`,
         `${namespace}.ignorePatterns`,
         `${namespace}.daemonStatusFile`,
+        `${namespace}.extraPaths`,
         'python.analysis.extraPaths',
     ];
     const changed = settings.map((s) => e.affectsConfiguration(s));

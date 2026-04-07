@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+import * as dotenv from 'dotenv';
 import * as fsapi from 'fs-extra';
+import * as path from 'path';
 import { Disposable, env, l10n, LanguageStatusSeverity, LogOutputChannel, Uri } from 'vscode';
 import { State } from 'vscode-languageclient';
 import {
@@ -11,13 +13,33 @@ import {
     ServerOptions,
 } from 'vscode-languageclient/node';
 import { DEBUG_SERVER_SCRIPT_PATH, SERVER_SCRIPT_PATH } from './constants';
-import { traceError, traceInfo, traceVerbose } from './logging';
+import { traceError, traceInfo, traceLog, traceVerbose } from './logging';
 import { getDebuggerPath } from './python';
 import { getExtensionSettings, getGlobalSettings, ISettings } from './settings';
 import { getLSClientTraceLevel, getDocumentSelector } from './utilities';
 import { updateStatus } from './status';
+import { getConfiguration } from './vscodeapi';
 
 export type IInitOptions = { settings: ISettings[]; globalSettings: ISettings };
+
+function getEnvFileVars(workspacePath: string): Record<string, string> {
+    const pythonConfig = getConfiguration('python', Uri.file(workspacePath));
+    let envFile = pythonConfig.get<string>('envFile', '${workspaceFolder}/.env');
+    envFile = envFile.split('${workspaceFolder}').join(workspacePath);
+    traceLog(`Using envFile: ${envFile}`);
+
+    if (!fsapi.existsSync(envFile)) {
+        return {};
+    }
+
+    try {
+        const content = fsapi.readFileSync(envFile, 'utf-8');
+        return dotenv.parse(content);
+    } catch (ex) {
+        traceError(`Failed to parse env file ${envFile}: ${ex}`);
+        return {};
+    }
+}
 
 async function createServer(
     settings: ISettings,
@@ -42,6 +64,12 @@ async function createServer(
 
     // Set debugger path needed for debugging python code.
     const newEnv = { ...process.env };
+
+    // Apply env vars from python.envFile / .env
+    const workspacePath = Uri.parse(settings.workspace).fsPath;
+    const envFileVars = getEnvFileVars(workspacePath);
+    Object.assign(newEnv, envFileVars);
+
     const debuggerPath = await getDebuggerPath();
     const isDebugScript = await fsapi.pathExists(DEBUG_SERVER_SCRIPT_PATH);
     if (newEnv.USE_DEBUGPY && debuggerPath) {
