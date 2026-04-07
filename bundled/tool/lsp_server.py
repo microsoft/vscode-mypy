@@ -11,6 +11,7 @@ import pathlib
 import sys
 import sysconfig
 import tempfile
+import threading
 import traceback
 import uuid
 from dataclasses import dataclass
@@ -110,7 +111,7 @@ class MypyInfo:
 MYPY_INFO_TABLE: Dict[str, MypyInfo] = {}
 
 
-def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
+def get_mypy_info(settings: Dict[str, Any]) -> Optional[MypyInfo]:
     try:
         code_workspace = settings["workspaceFS"]
         if code_workspace not in MYPY_INFO_TABLE:
@@ -127,9 +128,12 @@ def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
             MYPY_INFO_TABLE[code_workspace] = MypyInfo(version, is_daemon)
         return MYPY_INFO_TABLE[code_workspace]
     except:  # noqa: E722
-        log_to_output(
-            f"Error while checking mypy executable:\r\n{traceback.format_exc()}"
+        log_error(
+            f"Mypy failed to run. Check that mypy is installed and the "
+            f"'mypy-type-checker.interpreter' or 'mypy-type-checker.path' "
+            f"settings are correct.\r\n{traceback.format_exc()}"
         )
+        return None
 
 
 def _run_unidentified_tool(
@@ -166,6 +170,14 @@ def did_open(params: lsp.DidOpenTextDocumentParams) -> None:
     _linting_helper(document)
 
 
+# Track lint request versions per URI to discard stale results from superseded runs.
+# This is a deduplication mechanism (not debounce): each save spawns a lint process,
+# but only the latest result is published. Rapid saves produce multiple runs where
+# only the last one's output is kept.
+_lint_versions: Dict[str, int] = {}
+_lint_versions_lock = threading.Lock()
+
+
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
 def did_save(params: lsp.DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
@@ -181,6 +193,9 @@ def did_close(params: lsp.DidCloseTextDocumentParams) -> None:
     if settings["reportingScope"] == "file":
         # Publishing empty diagnostics to clear the entries for this file.
         _clear_diagnostics(document)
+    # Clean up lint version tracking for closed documents
+    with _lint_versions_lock:
+        _lint_versions.pop(document.uri, None)
 
 
 def _is_empty_diagnostics(
@@ -201,6 +216,38 @@ def _clear_diagnostics(document: TextDocument) -> None:
     LSP_SERVER.text_document_publish_diagnostics(
         lsp.PublishDiagnosticsParams(uri=document.uri, diagnostics=[])
     )
+
+
+# Patterns that indicate mypy misconfiguration or startup errors.
+# Only patterns that are unambiguously mypy infrastructure errors, not
+# normal type-checking diagnostics for user code.  "No module named",
+# "missing imports", and "Cannot find implementation or library stub" are
+# excluded because they are routine diagnostic messages (especially in
+# daemon mode where diagnostics are emitted on stderr).
+_MISCONFIGURATION_PATTERNS = [
+    "mypy: error:",
+    "Could not find a config file",
+    "Error constructing plugin",
+    "plugin is not installed",
+    "invalid config",
+]
+
+# Track last reported misconfiguration to suppress duplicates
+_last_misconfiguration_msg: Dict[str, str] = {}
+
+
+def _check_for_misconfiguration(stderr: str) -> None:
+    """Check stderr for common misconfiguration patterns and surface them
+    as user-visible error notifications. Only reports each unique message once."""
+    for line in stderr.splitlines():
+        line_lower = line.lower()
+        for pattern in _MISCONFIGURATION_PATTERNS:
+            if pattern.lower() in line_lower:
+                msg = stderr.strip()
+                if msg != _last_misconfiguration_msg.get("msg"):
+                    _last_misconfiguration_msg["msg"] = msg
+                    log_error(f"Mypy configuration issue detected:\r\n{msg}")
+                return
 
 
 def _linting_helper(document: TextDocument) -> None:
@@ -232,11 +279,39 @@ def _linting_helper(document: TextDocument) -> None:
             _clear_diagnostics(document)
             return None
 
-        version = get_mypy_info(settings).version
+        mypy_info = get_mypy_info(settings)
+        if mypy_info is None:
+            _clear_diagnostics(document)
+            return None
+
+        # Bump the version for this URI so any concurrent or queued lint for
+        # the same document can detect that it has been superseded.
+        with _lint_versions_lock:
+            lint_version = _lint_versions.get(document.uri, 0) + 1
+            _lint_versions[document.uri] = lint_version
+
+        version = mypy_info.version
         if (version.major, version.minor) >= (0, 991) and sys.version_info >= (3, 8):
             extra_args += ["--show-error-end"]
 
         result = _run_tool_on_document(document, extra_args=extra_args)
+
+        # Check for misconfiguration before staleness check so warnings
+        # are surfaced even if this run is superseded by a newer one.
+        if result and result.stderr:
+            _check_for_misconfiguration(result.stderr)
+
+        # If a newer lint request arrived while we were running, discard
+        # these stale results — the newer request will publish its own.
+        with _lint_versions_lock:
+            if _lint_versions.get(document.uri, 0) != lint_version:
+                log_to_output(
+                    f"Discarding stale lint results for {document.uri} "
+                    f"(version {lint_version} superseded by "
+                    f"{_lint_versions[document.uri]})"
+                )
+                return []
+
         # Some mypy modes (e.g., non_interactive) emit diagnostics on stderr.
         # Prefer parsing combined output so we don't miss errors when stdout is empty.
         if result and (result.stdout or result.stderr):
@@ -284,12 +359,7 @@ def _linting_helper(document: TextDocument) -> None:
         else:
             _clear_diagnostics(document)
     except Exception:
-        LSP_SERVER.window_log_message(
-            lsp.LogMessageParams(
-                type=lsp.MessageType.Error,
-                message=f"Linting failed with error:\r\n{traceback.format_exc()}",
-            )
-        )
+        log_error(f"Linting failed with error:\r\n{traceback.format_exc()}")
     return []
 
 
@@ -458,7 +528,8 @@ def initialize(params: lsp.InitializeParams) -> None:
 def on_exit(_params: Optional[Any] = None) -> None:
     """Handle clean up on exit."""
     for settings in WORKSPACE_SETTINGS.values():
-        if get_mypy_info(settings).is_daemon:
+        mypy_info = get_mypy_info(settings)
+        if mypy_info and mypy_info.is_daemon:
             try:
                 _run_dmypy_command([], copy.deepcopy(settings), "kill")
             except Exception:
@@ -469,7 +540,8 @@ def on_exit(_params: Optional[Any] = None) -> None:
 def on_shutdown(_params: Optional[Any] = None) -> None:
     """Handle clean up on shutdown."""
     for settings in WORKSPACE_SETTINGS.values():
-        if get_mypy_info(settings).is_daemon:
+        mypy_info = get_mypy_info(settings)
+        if mypy_info and mypy_info.is_daemon:
             try:
                 _run_dmypy_command([], copy.deepcopy(settings), "stop")
             except Exception:
@@ -479,7 +551,10 @@ def on_shutdown(_params: Optional[Any] = None) -> None:
 def _log_version_info() -> None:
     for settings in WORKSPACE_SETTINGS.values():
         code_workspace = settings["workspaceFS"]
-        actual_version = get_mypy_info(settings).version
+        mypy_info = get_mypy_info(settings)
+        if mypy_info is None:
+            continue
+        actual_version = mypy_info.version
         min_version = parse_version(MIN_VERSION)
 
         if actual_version < min_version:
@@ -760,12 +835,14 @@ def _run_tool_on_document(
 
     cwd = get_cwd(settings, document)
 
+    mypy_info = get_mypy_info(settings)
+
     if settings["path"]:
         argv = settings["path"]
     else:
         argv = settings["interpreter"] or [sys.executable]
-        argv += ["-m", "mypy.dmypy" if get_mypy_info(settings).is_daemon else "mypy"]
-    if get_mypy_info(settings).is_daemon:
+        argv += ["-m", "mypy.dmypy" if mypy_info and mypy_info.is_daemon else "mypy"]
+    if mypy_info and mypy_info.is_daemon:
         argv += _get_dmypy_args(settings, "run")
     argv += TOOL_ARGS + settings["args"] + extra_args
     if settings["reportingScope"] == "file":
@@ -796,7 +873,8 @@ def _run_tool_on_document(
 def _run_dmypy_command(
     extra_args: Sequence[str], settings: Dict[str, Any], command: str
 ) -> utils.RunResult:
-    if not get_mypy_info(settings).is_daemon:
+    mypy_info = get_mypy_info(settings)
+    if not mypy_info or not mypy_info.is_daemon:
         log_error(f"dmypy command called in non-daemon context: {command}")
         raise ValueError(f"dmypy command called in non-daemon context: {command}")
 
