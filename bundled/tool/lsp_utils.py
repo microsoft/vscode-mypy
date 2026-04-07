@@ -126,11 +126,13 @@ def _get_relative_path(file_path: str, workspace_root: str) -> str:
         return pathlib.Path(file_path).as_posix()
 
 
-def is_match(patterns: List[str], file_path: str, workspace_root: str) -> bool:
+def is_match(patterns: List[str], file_path: str, workspace_root: str = None) -> bool:
     """Returns true if the file matches one of the fnmatch patterns."""
     if not patterns:
         return False
-    relative_path = _get_relative_path(file_path, workspace_root)
+    relative_path = (
+        _get_relative_path(file_path, workspace_root) if workspace_root else file_path
+    )
     file_name = pathlib.Path(file_path).name
     return any(
         fnmatch.fnmatch(relative_path, pattern)
