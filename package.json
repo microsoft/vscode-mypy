@@ -49,6 +49,7 @@
         "workspaceContains:mypy.ini"
     ],
     "main": "./dist/extension.js",
+    "l10n": "./l10n",
     "scripts": {
         "vscode:prepublish": "npm run package",
         "compile": "webpack",
