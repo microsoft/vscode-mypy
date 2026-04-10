@@ -8,8 +8,9 @@ import { WorkspaceFolder } from 'vscode';
 import { getConfiguration } from './vscodeapi';
 import { traceInfo, traceWarn } from './logging';
 
-function expandTilde(p: string): string {
-    const home = process.env.HOME || process.env.USERPROFILE || '';
+export function expandTilde(p: string): string {
+    const home = process.env.HOME || process.env.USERPROFILE;
+    if (!home) return p;
     if (p === '~') {
         return home;
     }

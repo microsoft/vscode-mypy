@@ -6,6 +6,7 @@ import { ConfigurationChangeEvent, ConfigurationScope, WorkspaceConfiguration, W
 import { traceLog, traceWarn } from './logging';
 import { getInterpreterDetails } from './python';
 import { getConfiguration, getWorkspaceFolders } from './vscodeapi';
+import { expandTilde } from './envFile';
 import { getInterpreterFromSetting } from './utilities';
 
 const DEFAULT_SEVERITY: Record<string, string> = {
@@ -31,19 +32,6 @@ export interface ISettings {
 
 export function getExtensionSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings[]> {
     return Promise.all(getWorkspaceFolders().map((w) => getWorkspaceSettings(namespace, w, includeInterpreter)));
-}
-
-function expandTilde(value: string): string {
-    const home = process.env.HOME || process.env.USERPROFILE;
-    if (home) {
-        if (value === '~') {
-            return home;
-        }
-        if (value.startsWith('~/') || value.startsWith('~\\')) {
-            return path.join(home, value.slice(2));
-        }
-    }
-    return value;
 }
 
 function resolveVariables(
