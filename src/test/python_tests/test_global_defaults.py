@@ -8,6 +8,7 @@ per-workspace settings.
 """
 
 import lsp_server
+import pytest
 
 
 def _with_global_settings(overrides):
@@ -31,32 +32,39 @@ def _with_global_settings(overrides):
 # ---------------------------------------------------------------------------
 
 
-def test_global_defaults_ignorePatterns_from_global_settings():
-    """ignorePatterns set in GLOBAL_SETTINGS are returned by _get_global_defaults."""
-    with _with_global_settings({"ignorePatterns": ["*.pyi", "test_*"]}):
+@pytest.mark.parametrize(
+    "overrides, pop_key, key, expected",
+    [
+        pytest.param(
+            {"ignorePatterns": ["*.pyi", "test_*"]},
+            None,
+            "ignorePatterns",
+            ["*.pyi", "test_*"],
+            id="ignorePatterns-set",
+        ),
+        pytest.param(
+            {}, "ignorePatterns", "ignorePatterns", [], id="ignorePatterns-default"
+        ),
+        pytest.param(
+            {"daemonStatusFile": "/custom/status.json"},
+            None,
+            "daemonStatusFile",
+            "/custom/status.json",
+            id="daemonStatusFile-set",
+        ),
+        pytest.param(
+            {},
+            "daemonStatusFile",
+            "daemonStatusFile",
+            "",
+            id="daemonStatusFile-default",
+        ),
+    ],
+)
+def test_global_defaults_setting(overrides, pop_key, key, expected):
+    """Each global setting is correctly read or defaults when absent."""
+    with _with_global_settings(overrides):
+        if pop_key:
+            lsp_server.GLOBAL_SETTINGS.pop(pop_key, None)
         defaults = lsp_server._get_global_defaults()
-        assert defaults["ignorePatterns"] == ["*.pyi", "test_*"]
-
-
-def test_global_defaults_ignorePatterns_empty_when_not_set():
-    """ignorePatterns defaults to [] when not present in GLOBAL_SETTINGS."""
-    with _with_global_settings({}):
-        # Ensure ignorePatterns is not in GLOBAL_SETTINGS
-        lsp_server.GLOBAL_SETTINGS.pop("ignorePatterns", None)
-        defaults = lsp_server._get_global_defaults()
-        assert defaults["ignorePatterns"] == []
-
-
-def test_global_defaults_daemonStatusFile_from_global_settings():
-    """daemonStatusFile set in GLOBAL_SETTINGS is returned by _get_global_defaults."""
-    with _with_global_settings({"daemonStatusFile": "/custom/status.json"}):
-        defaults = lsp_server._get_global_defaults()
-        assert defaults["daemonStatusFile"] == "/custom/status.json"
-
-
-def test_global_defaults_daemonStatusFile_empty_when_not_set():
-    """daemonStatusFile defaults to '' when not present in GLOBAL_SETTINGS."""
-    with _with_global_settings({}):
-        lsp_server.GLOBAL_SETTINGS.pop("daemonStatusFile", None)
-        defaults = lsp_server._get_global_defaults()
-        assert defaults["daemonStatusFile"] == ""
+        assert defaults[key] == expected
