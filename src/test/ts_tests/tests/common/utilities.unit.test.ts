@@ -21,6 +21,8 @@ suite('Document Selector Tests', () => {
         assert.deepStrictEqual(selector, [
             { scheme: 'file', language: 'python' },
             { scheme: 'untitled', language: 'python' },
+            { scheme: 'vscode-notebook', language: 'python' },
+            { scheme: 'vscode-notebook-cell', language: 'python' },
         ]);
     });
     test('Document selector virtual workspace', () => {

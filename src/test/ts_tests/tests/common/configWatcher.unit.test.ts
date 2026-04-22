@@ -3,80 +3,48 @@
 
 import { assert } from 'chai';
 import * as sinon from 'sinon';
-import { Disposable, FileSystemWatcher, workspace } from 'vscode';
+import { workspace } from 'vscode';
 import { createConfigFileWatchers } from '../../../../common/configWatcher';
 import { MYPY_CONFIG_FILES } from '../../../../common/constants';
 
-interface MockFileSystemWatcher {
-    watcher: FileSystemWatcher;
-    fireDidCreate(): Promise<void>;
-    fireDidChange(): Promise<void>;
-    fireDidDelete(): Promise<void>;
-}
-
-function createMockFileSystemWatcher(): MockFileSystemWatcher {
-    let onDidChangeHandler: (() => Promise<void>) | undefined;
-    let onDidCreateHandler: (() => Promise<void>) | undefined;
-    let onDidDeleteHandler: (() => Promise<void>) | undefined;
-
-    const watcher = {
-        onDidChange: (handler: () => Promise<void>): Disposable => {
-            onDidChangeHandler = handler;
-            return { dispose: () => {} };
-        },
-        onDidCreate: (handler: () => Promise<void>): Disposable => {
-            onDidCreateHandler = handler;
-            return { dispose: () => {} };
-        },
-        onDidDelete: (handler: () => Promise<void>): Disposable => {
-            onDidDeleteHandler = handler;
-            return { dispose: () => {} };
-        },
-        dispose: () => {},
-    } as unknown as FileSystemWatcher;
-
-    return {
-        watcher,
-        fireDidCreate: async () => {
-            if (onDidCreateHandler) {
-                await onDidCreateHandler();
-            }
-        },
-        fireDidChange: async () => {
-            if (onDidChangeHandler) {
-                await onDidChangeHandler();
-            }
-        },
-        fireDidDelete: async () => {
-            if (onDidDeleteHandler) {
-                await onDidDeleteHandler();
-            }
-        },
-    };
-}
-
 suite('Config File Watcher Tests', () => {
-    let sandbox: sinon.SinonSandbox;
     let createFileSystemWatcherStub: sinon.SinonStub;
-    let mockWatchers: MockFileSystemWatcher[];
+    let mockWatcher: {
+        onDidChange: sinon.SinonStub;
+        onDidCreate: sinon.SinonStub;
+        onDidDelete: sinon.SinonStub;
+        dispose: sinon.SinonStub;
+    };
+    let changeDisposable: { dispose: sinon.SinonStub };
+    let createDisposable: { dispose: sinon.SinonStub };
+    let deleteDisposable: { dispose: sinon.SinonStub };
+    let onConfigChangedCallback: sinon.SinonStub;
 
     setup(() => {
-        sandbox = sinon.createSandbox();
-        mockWatchers = MYPY_CONFIG_FILES.map(() => createMockFileSystemWatcher());
+        changeDisposable = { dispose: sinon.stub() };
+        createDisposable = { dispose: sinon.stub() };
+        deleteDisposable = { dispose: sinon.stub() };
 
-        let watcherIndex = 0;
-        createFileSystemWatcherStub = sandbox.stub(workspace, 'createFileSystemWatcher').callsFake(() => {
-            return mockWatchers[watcherIndex++].watcher;
-        });
+        mockWatcher = {
+            onDidChange: sinon.stub().returns(changeDisposable),
+            onDidCreate: sinon.stub().returns(createDisposable),
+            onDidDelete: sinon.stub().returns(deleteDisposable),
+            dispose: sinon.stub(),
+        };
+
+        createFileSystemWatcherStub = sinon.stub(workspace, 'createFileSystemWatcher');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        createFileSystemWatcherStub.returns(mockWatcher as any);
+
+        onConfigChangedCallback = sinon.stub().resolves();
     });
 
     teardown(() => {
-        sandbox.restore();
+        sinon.restore();
     });
 
     test('Creates a file watcher for each mypy config file pattern', () => {
-        const onConfigChanged = sandbox.stub().resolves();
-        createConfigFileWatchers(onConfigChanged);
+        createConfigFileWatchers(onConfigChangedCallback);
 
         assert.strictEqual(createFileSystemWatcherStub.callCount, MYPY_CONFIG_FILES.length);
         for (let i = 0; i < MYPY_CONFIG_FILES.length; i++) {
@@ -88,55 +56,87 @@ suite('Config File Watcher Tests', () => {
     });
 
     test('Server restarts when a config file is created', async () => {
-        const onConfigChanged = sandbox.stub().resolves();
-        createConfigFileWatchers(onConfigChanged);
+        createConfigFileWatchers(onConfigChangedCallback);
 
-        await mockWatchers[0].fireDidCreate();
+        const createHandler = mockWatcher.onDidCreate.getCall(0).args[0];
+        await createHandler();
 
-        assert.isTrue(onConfigChanged.calledOnce, 'Expected onConfigChanged to be called when config file is created');
+        assert.isTrue(
+            onConfigChangedCallback.calledOnce,
+            'Expected onConfigChanged to be called when config file is created',
+        );
     });
 
     test('Server restarts when a config file is changed', async () => {
-        const onConfigChanged = sandbox.stub().resolves();
-        createConfigFileWatchers(onConfigChanged);
+        createConfigFileWatchers(onConfigChangedCallback);
 
         // Simulate modifying pyproject.toml (index 2)
-        await mockWatchers[2].fireDidChange();
+        const changeHandler = mockWatcher.onDidChange.getCall(2).args[0];
+        await changeHandler();
 
-        assert.isTrue(onConfigChanged.calledOnce, 'Expected onConfigChanged to be called when config file is changed');
+        assert.isTrue(
+            onConfigChangedCallback.calledOnce,
+            'Expected onConfigChanged to be called when config file is changed',
+        );
     });
 
     test('Server restarts when a config file is deleted', async () => {
-        const onConfigChanged = sandbox.stub().resolves();
-        createConfigFileWatchers(onConfigChanged);
+        createConfigFileWatchers(onConfigChangedCallback);
 
-        await mockWatchers[3].fireDidDelete();
+        const deleteHandler = mockWatcher.onDidDelete.getCall(3).args[0];
+        await deleteHandler();
 
-        assert.isTrue(onConfigChanged.calledOnce, 'Expected onConfigChanged to be called when config file is deleted');
+        assert.isTrue(
+            onConfigChangedCallback.calledOnce,
+            'Expected onConfigChanged to be called when config file is deleted',
+        );
     });
 
     test('Server restarts for each config file type on change', async () => {
-        const onConfigChanged = sandbox.stub().resolves();
-        createConfigFileWatchers(onConfigChanged);
+        createConfigFileWatchers(onConfigChangedCallback);
 
-        for (const mock of mockWatchers) {
-            await mock.fireDidChange();
+        for (let i = 0; i < MYPY_CONFIG_FILES.length; i++) {
+            const changeHandler = mockWatcher.onDidChange.getCall(i).args[0];
+            await changeHandler();
         }
 
         assert.strictEqual(
-            onConfigChanged.callCount,
+            onConfigChangedCallback.callCount,
             MYPY_CONFIG_FILES.length,
             `Expected onConfigChanged to be called once for each of the ${MYPY_CONFIG_FILES.length} config file patterns`,
         );
     });
 
     test('Returns a disposable for each watcher', () => {
-        const onConfigChanged = sandbox.stub().resolves();
-        const disposables = createConfigFileWatchers(onConfigChanged);
+        const disposables = createConfigFileWatchers(onConfigChangedCallback);
 
         assert.strictEqual(disposables.length, MYPY_CONFIG_FILES.length);
         for (const d of disposables) {
             assert.isFunction(d.dispose);
         }
+    });
+
+    test('Should dispose all subscriptions and watcher on dispose', () => {
+        const watchers = createConfigFileWatchers(onConfigChangedCallback);
+
+        watchers[0].dispose();
+
+        assert.strictEqual(changeDisposable.dispose.callCount, 1, 'Change subscription should be disposed');
+        assert.strictEqual(createDisposable.dispose.callCount, 1, 'Create subscription should be disposed');
+        assert.strictEqual(deleteDisposable.dispose.callCount, 1, 'Delete subscription should be disposed');
+        assert.strictEqual(mockWatcher.dispose.callCount, 1, 'Watcher should be disposed');
+    });
+
+    test('Should not call callback after dispose', () => {
+        const watchers = createConfigFileWatchers(onConfigChangedCallback);
+
+        // Dispose the watcher
+        watchers[0].dispose();
+
+        // Get the handlers and call them after disposal
+        const changeHandler = mockWatcher.onDidChange.getCall(0).args[0];
+        changeHandler();
+
+        assert.strictEqual(onConfigChangedCallback.callCount, 0, 'Callback should not be called after dispose');
     });
 });

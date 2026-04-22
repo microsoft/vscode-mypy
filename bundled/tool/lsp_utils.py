@@ -80,14 +80,20 @@ _stdlib_paths = set(
 )
 
 
-def normalize_path(file_path: str) -> str:
+def normalize_path(file_path: str, resolve_symlinks: bool = True) -> str:
     """Returns normalized path."""
-    return str(pathlib.Path(file_path).resolve())
+    path = pathlib.Path(file_path)
+    if resolve_symlinks:
+        path = path.resolve()
+    return str(path)
 
 
 def is_same_path(file_path1: str, file_path2: str) -> bool:
     """Returns true if two paths are the same, resolving symlinks."""
-    return pathlib.Path(file_path1).resolve() == pathlib.Path(file_path2).resolve()
+    try:
+        return pathlib.Path(file_path1).resolve() == pathlib.Path(file_path2).resolve()
+    except OSError:
+        return pathlib.Path(file_path1) == pathlib.Path(file_path2)
 
 
 def absolute_path(file_path: str) -> str:
@@ -120,11 +126,13 @@ def _get_relative_path(file_path: str, workspace_root: str) -> str:
         return pathlib.Path(file_path).as_posix()
 
 
-def is_match(patterns: List[str], file_path: str, workspace_root: str) -> bool:
+def is_match(patterns: List[str], file_path: str, workspace_root: str = None) -> bool:
     """Returns true if the file matches one of the fnmatch patterns."""
     if not patterns:
         return False
-    relative_path = _get_relative_path(file_path, workspace_root)
+    relative_path = (
+        _get_relative_path(file_path, workspace_root) if workspace_root else file_path
+    )
     file_name = pathlib.Path(file_path).name
     return any(
         fnmatch.fnmatch(relative_path, pattern)

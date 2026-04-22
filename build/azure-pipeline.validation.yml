@@ -1,13 +1,5 @@
-trigger:
-  branches:
-    include:
-      - '*'
-
-pr:
-  branches:
-    include:
-      - '*'
-  drafts: true
+trigger: none
+pr: none
 
 resources:
   repositories:
@@ -69,6 +61,6 @@ extends:
           - template: azure-pipelines/extension/templates/jobs/package.yml@templates
             parameters:
               buildSteps: ${{ parameters.buildSteps }}
-              isPreRelease: false
+              isPreRelease: true
               standardizedVersioning: true
               customNPMRegistry: $(AZURE_ARTIFACTS_FEED)
