@@ -130,8 +130,10 @@ def setup_lsp_mocks():
             sys.modules[_mod_name] = _mod
             _INJECTED_MODULES.append(_mod_name)
 
-    # lsp_utils lives in bundled/tool and only uses stdlib —
-    # let the real module be imported so tests are not broken by a partial mock.
+    # lsp_utils delegates to vscode-common-python-lsp which lives in bundled/libs.
+    libs_dir = str(pathlib.Path(__file__).parents[3] / "bundled" / "libs")
+    if libs_dir not in sys.path:
+        sys.path.insert(0, libs_dir)
 
     tool_dir = str(pathlib.Path(__file__).parents[3] / "bundled" / "tool")
     if tool_dir not in sys.path:
