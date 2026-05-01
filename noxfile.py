@@ -119,6 +119,16 @@ def install_bundled_libs(session):
     """Installs the libraries that will be bundled with the extension."""
     session.install("wheel")
     _install_bundle(session)
+    session.install(
+        "-t",
+        "./bundled/libs",
+        "--no-cache-dir",
+        "--implementation",
+        "py",
+        "--no-deps",
+        "--upgrade",
+        "vscode-common-python-lsp==0.3.0",
+    )
 
 
 @nox.session(python="3.10")
