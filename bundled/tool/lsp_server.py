@@ -9,7 +9,6 @@ import json
 import os
 import pathlib
 import sys
-import sysconfig
 import tempfile
 import threading
 import traceback
@@ -30,26 +29,6 @@ def update_sys_path(path_to_add: str, strategy: str) -> None:
             sys.path.append(path_to_add)
 
 
-# **********************************************************
-# Update PATH before running anything.
-# **********************************************************
-def update_environ_path() -> None:
-    """Update PATH environment variable with the 'scripts' directory.
-    Windows: .venv/Scripts
-    Linux/MacOS: .venv/bin
-    """
-    scripts = sysconfig.get_path("scripts")
-    paths_variants = ["Path", "PATH"]
-
-    for var_name in paths_variants:
-        if var_name in os.environ:
-            paths = os.environ[var_name].split(os.pathsep)
-            if scripts not in paths:
-                paths.insert(0, scripts)
-                os.environ[var_name] = os.pathsep.join(paths)
-                break
-
-
 # Ensure that we can import LSP libraries, and other bundled libraries.
 BUNDLE_DIR = pathlib.Path(__file__).parent.parent
 BUNDLED_LIBS = os.fspath(BUNDLE_DIR / "libs")
@@ -59,8 +38,6 @@ update_sys_path(
     BUNDLED_LIBS,
     os.getenv("LS_IMPORT_STRATEGY", "useBundled"),
 )
-update_environ_path()
-
 # **********************************************************
 # Imports needed for the language server goes below this.
 # **********************************************************
@@ -71,7 +48,14 @@ from packaging.version import parse as parse_version
 from pygls import uris
 from pygls.lsp.server import LanguageServer
 from pygls.workspace import TextDocument
-from vscode_common_python_lsp import RunResult, is_match, normalize_path
+from vscode_common_python_lsp import (
+    RunResult,
+    is_match,
+    normalize_path,
+    update_environ_path,
+)
+
+update_environ_path()
 
 WORKSPACE_SETTINGS = {}
 GLOBAL_SETTINGS = {}
