@@ -42,7 +42,9 @@ export async function getWorkspaceSettings(
 export async function getGlobalSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings> {
     const resolveInterpreter = includeInterpreter ? async () => getInterpreterDetails() : undefined;
     const settings = (await _getGlobalSettings(namespace, MYPY_TOOL_CONFIG, resolveInterpreter)) as ISettings;
-    if (!includeInterpreter) settings.interpreter = [];
+    if (!includeInterpreter) {
+        settings.interpreter = [];
+    }
     return settings;
 }
 
