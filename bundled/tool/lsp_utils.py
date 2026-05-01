@@ -24,12 +24,16 @@ from vscode_common_python_lsp import (
     classify_python_file,
     is_current_interpreter,
     is_match,
-    is_same_path,
+)
+from vscode_common_python_lsp import is_same_path as _is_same_path
+from vscode_common_python_lsp import (
     normalize_path,
     redirect_io,
     run_api,
     run_module,
-    run_path as _run_path,
+)
+from vscode_common_python_lsp import run_path as _run_path
+from vscode_common_python_lsp import (
     substitute_attr,
 )
 
@@ -93,6 +97,11 @@ def run_path(argv, cwd, env=None) -> RunResult:
     if env is not None:
         new_env.update(env)
     return _run_path(argv=argv, use_stdin=False, cwd=cwd, env=new_env)
+
+
+def is_same_path(file_path1: str, file_path2: str) -> bool:
+    """Returns true if two paths are the same, resolving symlinks."""
+    return _is_same_path(file_path1, file_path2, resolve_symlinks=True)
 
 
 def absolute_path(file_path: str) -> str:
