@@ -6,7 +6,6 @@ import { LanguageClient } from 'vscode-languageclient/node';
 import {
     IBaseSettings,
     PythonEnvironmentsProvider,
-    getServerCwd as _getServerCwd,
     restartServer as _restartServer,
 } from '@vscode/common-python-lsp';
 import { MYPY_TOOL_CONFIG } from './constants';
@@ -14,10 +13,6 @@ import { traceError } from './logging';
 import { ISettings } from './settings';
 
 export type IInitOptions = { settings: ISettings[]; globalSettings: ISettings };
-
-export function getServerCwd(settings: ISettings): string {
-    return _getServerCwd(settings as unknown as IBaseSettings);
-}
 
 let _disposables: Disposable[] = [];
 let _pythonProvider: PythonEnvironmentsProvider | undefined;

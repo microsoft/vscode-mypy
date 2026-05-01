@@ -71,6 +71,7 @@ from packaging.version import parse as parse_version
 from pygls import uris
 from pygls.lsp.server import LanguageServer
 from pygls.workspace import TextDocument
+from vscode_common_python_lsp import RunResult, is_match, normalize_path
 
 WORKSPACE_SETTINGS = {}
 GLOBAL_SETTINGS = {}
@@ -138,7 +139,7 @@ def get_mypy_info(settings: Dict[str, Any]) -> Optional[MypyInfo]:
 
 def _run_unidentified_tool(
     extra_args: Sequence[str], settings: Dict[str, Any]
-) -> utils.RunResult:
+) -> RunResult:
     """Runs the tool given by the settings without knowing what it is.
 
     This is supposed to be called only in `get_mypy_info`.
@@ -270,7 +271,7 @@ def _linting_helper(document: TextDocument) -> None:
             _clear_diagnostics(document)
             return None
 
-        if settings["reportingScope"] == "file" and utils.is_match(
+        if settings["reportingScope"] == "file" and is_match(
             settings["ignorePatterns"], document.path, settings["workspaceFS"]
         ):
             log_warning(
@@ -597,7 +598,7 @@ def _get_global_defaults():
 
 def _update_workspace_settings(settings):
     if not settings:
-        key = utils.normalize_path(os.getcwd())
+        key = normalize_path(os.getcwd())
         WORKSPACE_SETTINGS[key] = {
             "cwd": key,
             "workspaceFS": key,
@@ -607,7 +608,7 @@ def _update_workspace_settings(settings):
         return
 
     for setting in settings:
-        key = utils.normalize_path(uris.to_fs_path(setting["workspace"]))
+        key = normalize_path(uris.to_fs_path(setting["workspace"]))
         WORKSPACE_SETTINGS[key] = {
             **setting,
             "workspaceFS": key,
@@ -618,7 +619,7 @@ def _get_settings_by_path(file_path: pathlib.Path):
     workspaces = {s["workspaceFS"] for s in WORKSPACE_SETTINGS.values()}
 
     while file_path != file_path.parent:
-        str_file_path = utils.normalize_path(file_path)
+        str_file_path = normalize_path(file_path)
         if str_file_path in workspaces:
             return WORKSPACE_SETTINGS[str_file_path]
         file_path = file_path.parent
@@ -634,7 +635,7 @@ def _get_document_key(document: TextDocument):
 
         # Find workspace settings for the given file.
         while document_workspace != document_workspace.parent:
-            norm_path = utils.normalize_path(document_workspace)
+            norm_path = normalize_path(document_workspace)
             if norm_path in workspaces:
                 return norm_path
             document_workspace = document_workspace.parent
@@ -649,7 +650,7 @@ def _get_settings_by_document(document: TextDocument | None):
     key = _get_document_key(document)
     if key is None:
         # This is either a non-workspace file or there is no workspace.
-        key = utils.normalize_path(pathlib.Path(document.path).parent)
+        key = normalize_path(pathlib.Path(document.path).parent)
         return {
             "cwd": key,
             "workspaceFS": key,
@@ -682,7 +683,7 @@ def _get_dmypy_args(settings: Dict[str, Any], command: str) -> List[str]:
     - hang    : Hang for 100 seconds
     - daemon  : Run daemon in foreground
     """
-    key = utils.normalize_path(settings["workspaceFS"])
+    key = normalize_path(settings["workspaceFS"])
     valid_commands = [
         "start",
         "restart",
@@ -821,7 +822,7 @@ def get_cwd(settings: Dict[str, Any], document: Optional[TextDocument]) -> str:
 def _run_tool_on_document(
     document: TextDocument,
     extra_args: Sequence[str] = None,
-) -> utils.RunResult | None:
+) -> RunResult | None:
     """Runs tool on the given document.
 
     if use_stdin is true then contents of the document is passed to the
@@ -872,7 +873,7 @@ def _run_tool_on_document(
 
 def _run_dmypy_command(
     extra_args: Sequence[str], settings: Dict[str, Any], command: str
-) -> utils.RunResult:
+) -> RunResult:
     mypy_info = get_mypy_info(settings)
     if not mypy_info or not mypy_info.is_daemon:
         log_error(f"dmypy command called in non-daemon context: {command}")

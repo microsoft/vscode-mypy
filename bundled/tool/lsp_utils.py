@@ -15,15 +15,10 @@ import re
 from vscode_common_python_lsp import (
     SERVER_CWD,
     PythonFileKind,
-    RunResult,
     change_cwd,
     classify_python_file,
-    is_match,
 )
 from vscode_common_python_lsp import is_same_path as _is_same_path
-from vscode_common_python_lsp import (
-    normalize_path,
-)
 from vscode_common_python_lsp import run_path as _run_path
 
 # -------------------------------------------------------------------------
@@ -47,11 +42,8 @@ DIAGNOSTIC_RE = re.compile(
 
 __all__ = [
     "SERVER_CWD",
-    "normalize_path",
     "is_same_path",
     "is_stdlib_file",
-    "is_match",
-    "RunResult",
     "change_cwd",
     "run_path",
     "ERROR_CODE_BASE_URL",
