@@ -13,9 +13,7 @@ import pathlib
 import re
 
 from vscode_common_python_lsp import (
-    SERVER_CWD,
     PythonFileKind,
-    change_cwd,
     classify_python_file,
 )
 from vscode_common_python_lsp import is_same_path as _is_same_path
@@ -41,10 +39,8 @@ DIAGNOSTIC_RE = re.compile(
 )
 
 __all__ = [
-    "SERVER_CWD",
     "is_same_path",
     "is_stdlib_file",
-    "change_cwd",
     "run_path",
     "ERROR_CODE_BASE_URL",
     "SEE_HREF_PREFIX",
