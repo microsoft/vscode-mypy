@@ -95,50 +95,78 @@ def setup_lsp_mocks():
             self._kwargs = kwargs
 
     for _name in [
+        "CodeAction",
+        "CodeActionOptions",
+        "CodeActionParams",
         "CodeDescription",
         "Diagnostic",
         "DiagnosticSeverity",
         "DidCloseTextDocumentParams",
         "DidOpenTextDocumentParams",
         "DidSaveTextDocumentParams",
+        "DidChangeNotebookDocumentParams",
+        "DidCloseNotebookDocumentParams",
+        "DidOpenNotebookDocumentParams",
+        "DidSaveNotebookDocumentParams",
         "DocumentFormattingParams",
         "InitializeParams",
         "LogMessageParams",
+        "NotebookCellKind",
+        "NotebookCellLanguage",
+        "NotebookDocumentFilterWithNotebook",
+        "NotebookDocumentSyncOptions",
         "Position",
         "PublishDiagnosticsParams",
         "Range",
         "ShowMessageParams",
+        "TextDocumentEdit",
         "TextEdit",
+        "TraceValue",
+        "VersionedTextDocumentIdentifier",
+        "WorkspaceEdit",
     ]:
         setattr(mock_lsp, _name, _FlexClass)
     mock_lsp.MessageType = types.SimpleNamespace(
         Log=4, Error=1, Warning=2, Info=3, Debug=5
     )
 
+    mock_pygls = types.ModuleType("pygls")
+    mock_pygls.__path__ = []
+    mock_pygls_lsp = types.ModuleType("pygls.lsp")
+    mock_pygls_lsp.__path__ = []
+    mock_lsprotocol = types.ModuleType("lsprotocol")
+    mock_lsprotocol.__path__ = []
+
     for _mod_name, _mod in [
-        ("pygls", types.ModuleType("pygls")),
-        ("pygls.lsp", types.ModuleType("pygls.lsp")),
+        ("pygls", mock_pygls),
+        ("pygls.lsp", mock_pygls_lsp),
         ("pygls.lsp.server", mock_lsp_server_mod),
         ("pygls.workspace", mock_workspace),
         ("pygls.uris", mock_uris),
-        ("lsprotocol", types.ModuleType("lsprotocol")),
+        ("lsprotocol", mock_lsprotocol),
         ("lsprotocol.types", mock_lsp),
     ]:
-        try:
-            __import__(_mod_name)
-        except ImportError:
+        if _mod_name not in sys.modules:
             sys.modules[_mod_name] = _mod
             _INJECTED_MODULES.append(_mod_name)
 
-    # lsp_utils delegates to vscode-common-python-lsp which lives in bundled/libs.
-    libs_dir = str(pathlib.Path(__file__).parents[3] / "bundled" / "libs")
-    if libs_dir not in sys.path:
-        sys.path.insert(0, libs_dir)
+    pygls_mod = sys.modules["pygls"]
+    pygls_lsp_mod = sys.modules["pygls.lsp"]
+    pygls_mod.lsp = pygls_lsp_mod
+    pygls_mod.workspace = sys.modules["pygls.workspace"]
+    pygls_mod.uris = sys.modules["pygls.uris"]
+    pygls_lsp_mod.server = sys.modules["pygls.lsp.server"]
 
     tool_dir = str(pathlib.Path(__file__).parents[3] / "bundled" / "tool")
     if tool_dir not in sys.path:
         sys.path.insert(0, tool_dir)
         _INJECTED_PATH = tool_dir
+
+    # Add bundled/libs so the shared vscode_common_python_lsp package
+    # is importable (installed there by nox install_bundled_libs).
+    libs_dir = str(pathlib.Path(__file__).parents[3] / "bundled" / "libs")
+    if libs_dir not in sys.path:
+        sys.path.insert(0, libs_dir)
 
 
 # Run at import time so test modules can ``import lsp_server`` at the top level.

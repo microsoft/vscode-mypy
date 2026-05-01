@@ -84,8 +84,15 @@ __all__ = [
 
 
 def run_path(argv, cwd, env=None) -> RunResult:
-    """Runs as an executable (backward-compatible wrapper)."""
-    return _run_path(argv=argv, use_stdin=False, cwd=cwd, env=env)
+    """Runs as an executable (backward-compatible wrapper).
+
+    Mypy passes a partial env dict (extra vars only) — merge with os.environ
+    to preserve the full environment, matching the original behavior.
+    """
+    new_env = os.environ.copy()
+    if env is not None:
+        new_env.update(env)
+    return _run_path(argv=argv, use_stdin=False, cwd=cwd, env=new_env)
 
 
 def absolute_path(file_path: str) -> str:
