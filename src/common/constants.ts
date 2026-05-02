@@ -25,12 +25,7 @@ export const MYPY_TOOL_CONFIG: ToolConfig = {
     serverScript: SERVER_SCRIPT_PATH,
     debugServerScript: DEBUG_SERVER_SCRIPT_PATH,
     settingsDefaults: {
-        args: [],
-        cwd: '${workspaceFolder}',
-        path: [],
         ignorePatterns: [],
-        importStrategy: 'useBundled',
-        showNotifications: 'off',
         extraPaths: [],
         reportingScope: 'file',
         preferDaemon: false,
