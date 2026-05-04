@@ -13,7 +13,7 @@ import pathlib
 import re
 
 from vscode_common_python_lsp import (
-    PythonFileKind,
+    RunResult,
     classify_python_file,
 )
 from vscode_common_python_lsp import is_same_path as _is_same_path
