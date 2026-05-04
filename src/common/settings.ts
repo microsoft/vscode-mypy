@@ -32,7 +32,12 @@ export async function getWorkspaceSettings(
     includeInterpreter?: boolean,
 ): Promise<ISettings> {
     const resolveInterpreter = includeInterpreter ? getInterpreterDetails : undefined;
-    const settings = (await _getWorkspaceSettings(namespace, workspace, MYPY_TOOL_CONFIG, resolveInterpreter)) as ISettings;
+    const settings = (await _getWorkspaceSettings(
+        namespace,
+        workspace,
+        MYPY_TOOL_CONFIG,
+        resolveInterpreter,
+    )) as ISettings;
     if (settings.ignorePatterns?.length > 0) {
         settings.ignorePatterns = resolveVariables(settings.ignorePatterns, workspace);
     }
