@@ -1,102 +1,29 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import * as path from 'path';
-import { ConfigurationChangeEvent, ConfigurationScope, WorkspaceConfiguration, WorkspaceFolder } from 'vscode';
-import { traceLog, traceWarn } from './logging';
+import { ConfigurationChangeEvent, WorkspaceFolder } from 'vscode';
+import {
+    IBaseSettings,
+    checkIfConfigurationChanged as _checkIfConfigurationChanged,
+    getGlobalSettings as _getGlobalSettings,
+    getWorkspaceSettings as _getWorkspaceSettings,
+    resolveVariables,
+} from '@vscode/common-python-lsp';
+import { MYPY_TOOL_CONFIG } from './constants';
 import { getInterpreterDetails } from './python';
 import { getConfiguration, getWorkspaceFolders } from './vscodeapi';
-import { expandTilde } from './envFile';
-import { getInterpreterFromSetting } from './utilities';
+import { traceWarn } from './logging';
 
-const DEFAULT_SEVERITY: Record<string, string> = {
-    error: 'Error',
-    note: 'Information',
-};
-
-export interface ISettings {
-    cwd: string;
-    workspace: string;
-    args: string[];
-    severity: Record<string, string>;
-    path: string[];
+export interface ISettings extends IBaseSettings {
     ignorePatterns: string[];
-    interpreter: string[];
-    importStrategy: string;
-    showNotifications: string;
     extraPaths: string[];
     reportingScope: string;
     preferDaemon: boolean;
-    daemonStatusFile: string;
+    severity: Record<string, string>;
 }
 
 export function getExtensionSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings[]> {
     return Promise.all(getWorkspaceFolders().map((w) => getWorkspaceSettings(namespace, w, includeInterpreter)));
-}
-
-function resolveVariables(
-    value: string[],
-    workspace?: WorkspaceFolder,
-    interpreter?: string[],
-    env?: NodeJS.ProcessEnv,
-): string[] {
-    const substitutions = new Map<string, string>();
-    const home = process.env.HOME || process.env.USERPROFILE;
-    if (home) {
-        substitutions.set('${userHome}', home);
-    }
-    if (workspace) {
-        substitutions.set('${workspaceFolder}', workspace.uri.fsPath);
-    }
-    substitutions.set('${cwd}', process.cwd());
-    getWorkspaceFolders().forEach((w) => {
-        substitutions.set('${workspaceFolder:' + w.name + '}', w.uri.fsPath);
-    });
-
-    env = env || process.env;
-    if (env) {
-        for (const [key, value] of Object.entries(env)) {
-            if (value) {
-                substitutions.set('${env:' + key + '}', value);
-            }
-        }
-    }
-
-    const modifiedValue = [];
-    for (const v of value) {
-        if (interpreter && v === '${interpreter}') {
-            modifiedValue.push(...interpreter);
-        } else {
-            modifiedValue.push(v);
-        }
-    }
-
-    return modifiedValue.map((s) => {
-        for (const [key, value] of substitutions) {
-            s = s.replace(key, value);
-        }
-        return s;
-    });
-}
-
-function getCwd(config: WorkspaceConfiguration, workspace: WorkspaceFolder): string {
-    const cwd = config.get<string>('cwd', workspace.uri.fsPath);
-    return resolveVariables([cwd], workspace)[0];
-}
-
-function getExtraPaths(_namespace: string, config: WorkspaceConfiguration, workspace: WorkspaceFolder): string[] {
-    const extraPaths = config.get<string[]>('extraPaths', []) ?? [];
-    if (extraPaths.length > 0) {
-        return extraPaths;
-    }
-
-    const legacyConfig = getConfiguration('python', workspace.uri);
-    const legacyExtraPaths = legacyConfig.get<string[]>('analysis.extraPaths', []) ?? [];
-
-    if (legacyExtraPaths.length > 0) {
-        traceLog('Using extraPaths from `python.analysis.extraPaths`.');
-    }
-    return legacyExtraPaths;
 }
 
 export async function getWorkspaceSettings(
@@ -104,87 +31,30 @@ export async function getWorkspaceSettings(
     workspace: WorkspaceFolder,
     includeInterpreter?: boolean,
 ): Promise<ISettings> {
-    const config = getConfiguration(namespace, workspace);
-
-    let interpreter: string[] = [];
-    if (includeInterpreter) {
-        interpreter = getInterpreterFromSetting(namespace, workspace) ?? [];
-        if (interpreter.length === 0) {
-            interpreter = (await getInterpreterDetails(workspace.uri)).path ?? [];
-        }
+    const resolveInterpreter = includeInterpreter ? getInterpreterDetails : undefined;
+    const settings = (await _getWorkspaceSettings(
+        namespace,
+        workspace,
+        MYPY_TOOL_CONFIG,
+        resolveInterpreter,
+    )) as ISettings;
+    if (settings.ignorePatterns?.length > 0) {
+        settings.ignorePatterns = resolveVariables(settings.ignorePatterns, workspace);
     }
-
-    const extraPaths = getExtraPaths(namespace, config, workspace);
-    const workspaceSetting = {
-        cwd: expandTilde(getCwd(config, workspace)),
-        workspace: workspace.uri.toString(),
-        args: resolveVariables(config.get<string[]>('args', []), workspace),
-        severity: config.get<Record<string, string>>('severity', DEFAULT_SEVERITY),
-        path: resolveVariables(config.get<string[]>('path', []), workspace, interpreter).map(expandTilde),
-        ignorePatterns: resolveVariables(config.get<string[]>('ignorePatterns', []), workspace),
-        interpreter: resolveVariables(interpreter, workspace).map(expandTilde),
-        importStrategy: config.get<string>('importStrategy', 'useBundled'),
-        showNotifications: config.get<string>('showNotifications', 'off'),
-        extraPaths: resolveVariables(extraPaths, workspace).map(expandTilde),
-        reportingScope: config.get<string>('reportingScope', 'file'),
-        preferDaemon: config.get<boolean>('preferDaemon', true),
-        daemonStatusFile: config.get<string>('daemonStatusFile', ''),
-    };
-    return workspaceSetting;
-}
-
-function getGlobalValue<T>(config: WorkspaceConfiguration, key: string, defaultValue: T): T {
-    const inspect = config.inspect<T>(key);
-    return inspect?.globalValue ?? inspect?.defaultValue ?? defaultValue;
+    return settings;
 }
 
 export async function getGlobalSettings(namespace: string, includeInterpreter?: boolean): Promise<ISettings> {
-    const config = getConfiguration(namespace);
-
-    let interpreter: string[] = [];
-    if (includeInterpreter) {
-        interpreter = getGlobalValue<string[]>(config, 'interpreter', []);
-        if (interpreter === undefined || interpreter.length === 0) {
-            interpreter = (await getInterpreterDetails()).path ?? [];
-        }
+    const resolveInterpreter = includeInterpreter ? async () => getInterpreterDetails() : undefined;
+    const settings = (await _getGlobalSettings(namespace, MYPY_TOOL_CONFIG, resolveInterpreter)) as ISettings;
+    if (!includeInterpreter) {
+        settings.interpreter = [];
     }
-
-    const setting = {
-        cwd: getGlobalValue<string>(config, 'cwd', process.cwd()),
-        workspace: process.cwd(),
-        args: getGlobalValue<string[]>(config, 'args', []),
-        severity: getGlobalValue<Record<string, string>>(config, 'severity', DEFAULT_SEVERITY),
-        path: getGlobalValue<string[]>(config, 'path', []),
-        ignorePatterns: getGlobalValue<string[]>(config, 'ignorePatterns', []),
-        interpreter: interpreter ?? [],
-        importStrategy: getGlobalValue<string>(config, 'importStrategy', 'useBundled'),
-        showNotifications: getGlobalValue<string>(config, 'showNotifications', 'off'),
-        extraPaths: getGlobalValue<string[]>(config, 'extraPaths', []),
-        reportingScope: config.get<string>('reportingScope', 'file'),
-        preferDaemon: config.get<boolean>('preferDaemon', true),
-        daemonStatusFile: config.get<string>('daemonStatusFile', ''),
-    };
-    return setting;
+    return settings;
 }
 
 export function checkIfConfigurationChanged(e: ConfigurationChangeEvent, namespace: string): boolean {
-    const settings = [
-        `${namespace}.args`,
-        `${namespace}.cwd`,
-        `${namespace}.severity`,
-        `${namespace}.path`,
-        `${namespace}.interpreter`,
-        `${namespace}.importStrategy`,
-        `${namespace}.showNotifications`,
-        `${namespace}.reportingScope`,
-        `${namespace}.preferDaemon`,
-        `${namespace}.ignorePatterns`,
-        `${namespace}.daemonStatusFile`,
-        `${namespace}.extraPaths`,
-        'python.analysis.extraPaths',
-    ];
-    const changed = settings.map((s) => e.affectsConfiguration(s));
-    return changed.includes(true);
+    return _checkIfConfigurationChanged(e, namespace, MYPY_TOOL_CONFIG.trackedSettings);
 }
 
 export function logLegacySettings(namespace: string): void {

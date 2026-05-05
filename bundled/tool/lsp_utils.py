@@ -13,29 +13,11 @@ import pathlib
 import re
 
 from vscode_common_python_lsp import (
-    CWD_LOCK,
-    SERVER_CWD,
-    CustomIO,
-    PythonFileKind,
-    QuickFixRegistrationError,
     RunResult,
-    as_list,
-    change_cwd,
     classify_python_file,
-    is_current_interpreter,
-    is_match,
 )
 from vscode_common_python_lsp import is_same_path as _is_same_path
-from vscode_common_python_lsp import (
-    normalize_path,
-    redirect_io,
-    run_api,
-    run_module,
-)
 from vscode_common_python_lsp import run_path as _run_path
-from vscode_common_python_lsp import (
-    substitute_attr,
-)
 
 # -------------------------------------------------------------------------
 # Mypy-specific constants (not part of shared package)
@@ -57,25 +39,9 @@ DIAGNOSTIC_RE = re.compile(
 )
 
 __all__ = [
-    "SERVER_CWD",
-    "CWD_LOCK",
-    "as_list",
-    "normalize_path",
     "is_same_path",
-    "is_current_interpreter",
-    "is_user_site_packages_file",
-    "is_system_site_packages_file",
     "is_stdlib_file",
-    "is_match",
-    "RunResult",
-    "CustomIO",
-    "substitute_attr",
-    "redirect_io",
-    "change_cwd",
-    "run_module",
     "run_path",
-    "run_api",
-    "QuickFixRegistrationError",
     "ERROR_CODE_BASE_URL",
     "SEE_HREF_PREFIX",
     "SEE_PREFIX_LEN",
@@ -107,16 +73,6 @@ def is_same_path(file_path1: str, file_path2: str) -> bool:
 def absolute_path(file_path: str) -> str:
     """Returns absolute path without symlink resolve."""
     return str(pathlib.Path(file_path).absolute())
-
-
-def is_user_site_packages_file(file_path: str) -> bool:
-    """Return True if the file belongs to the user site-packages directory."""
-    return classify_python_file(file_path) == PythonFileKind.USER_SITE
-
-
-def is_system_site_packages_file(file_path: str) -> bool:
-    """Return True if the file belongs to system site-packages directories."""
-    return classify_python_file(file_path) == PythonFileKind.SYSTEM_SITE
 
 
 def is_stdlib_file(file_path: str) -> bool:
