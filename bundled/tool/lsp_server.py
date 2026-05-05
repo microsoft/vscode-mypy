@@ -38,6 +38,10 @@ update_sys_path(
     BUNDLED_LIBS,
     os.getenv("LS_IMPORT_STRATEGY", "useBundled"),
 )
+# **********************************************************
+# Imports needed for the language server goes below this.
+# **********************************************************
+import lsp_utils as utils
 import lsprotocol.types as lsp
 from packaging.version import Version
 from packaging.version import parse as parse_version
@@ -50,11 +54,6 @@ from vscode_common_python_lsp import (
     normalize_path,
     update_environ_path,
 )
-
-# **********************************************************
-# Imports needed for the language server goes below this.
-# **********************************************************
-import lsp_utils as utils
 
 update_environ_path()
 
