@@ -1,13 +1,12 @@
 import * as path from 'path';
 
 import { runTests } from '@vscode/test-electron';
-import { EXTENSION_ROOT_DIR } from '../../common/constants';
 
 async function main() {
     try {
         // The folder containing the Extension Manifest package.json
         // Passed to `--extensionDevelopmentPath`
-        const extensionDevelopmentPath = EXTENSION_ROOT_DIR;
+        const extensionDevelopmentPath = path.resolve(__dirname, '..', '..', '..');
 
         // The path to test runner
         // Passed to --extensionTestsPath
