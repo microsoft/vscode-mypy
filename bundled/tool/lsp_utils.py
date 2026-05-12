@@ -1,26 +1,27 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
-"""Utility functions and classes for use with running tools over LSP."""
+"""Utility functions and classes for use with running tools over LSP.
+
+Thin wrapper: delegates to vscode-common-python-lsp shared package,
+providing backward-compatible names used by lsp_server.py.
+"""
 
 from __future__ import annotations
 
-import contextlib
-import fnmatch
-import io
 import os
 import pathlib
 import re
-import runpy
-import site
-import subprocess
-import sys
-import sysconfig
-import threading
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
-# Save the working directory used when loading this module
-SERVER_CWD = os.getcwd()
-CWD_LOCK = threading.Lock()
+from vscode_common_python_lsp import (
+    RunResult,
+    classify_python_file,
+)
+from vscode_common_python_lsp import is_same_path as _is_same_path
+from vscode_common_python_lsp import run_path as _run_path
+
+# -------------------------------------------------------------------------
+# Mypy-specific constants (not part of shared package)
+# -------------------------------------------------------------------------
 ERROR_CODE_BASE_URL = "https://mypy.readthedocs.io/en/latest/_refs.html#code-"
 SEE_HREF_PREFIX = "See https://mypy.readthedocs.io"
 SEE_PREFIX_LEN = len("See ")
@@ -37,56 +38,36 @@ DIAGNOSTIC_RE = re.compile(
     r"^(?P<location>(?P<filepath>..[^:]*):(?P<line>\d+)(?::(?P<char>\d+))?(?::(?P<end_line>\d+):(?P<end_char>\d+))?): (?P<type>\w+): (?P<message>.*?)(?:\s{2}\[(?P<code>[\w-]+)\])?\s*$"
 )
 
-
-def as_list(content: Union[Any, List[Any], Tuple[Any]]) -> List[Any]:
-    """Ensures we always get a list"""
-    if isinstance(content, (list, tuple)):
-        return list(content)
-    return [content]
-
-
-def _get_sys_config_paths() -> List[str]:
-    """Returns paths from sysconfig.get_paths()."""
-    return [
-        path
-        for group, path in sysconfig.get_paths().items()
-        if group not in ["data", "platdata", "scripts"]
-    ]
+__all__ = [
+    "is_same_path",
+    "is_stdlib_file",
+    "run_path",
+    "ERROR_CODE_BASE_URL",
+    "SEE_HREF_PREFIX",
+    "SEE_PREFIX_LEN",
+    "NOTE_CODE",
+    "LINE_OFFSET",
+    "CHAR_OFFSET",
+    "DIAGNOSTIC_RE",
+    "absolute_path",
+]
 
 
-def _get_extensions_dir() -> List[str]:
-    """This is the extensions folder under ~/.vscode or ~/.vscode-server."""
+def run_path(argv, cwd, env=None) -> RunResult:
+    """Runs as an executable (backward-compatible wrapper).
 
-    # The path here is calculated relative to the tool
-    # this is because users can launch VS Code with custom
-    # extensions folder using the --extensions-dir argument
-    path = pathlib.Path(__file__).parent.parent.parent.parent
-    #                              ^     bundled  ^  extensions
-    #                            tool        <extension>
-    if path.name == "extensions":
-        return [os.fspath(path)]
-    return []
-
-
-_stdlib_paths = set(
-    str(pathlib.Path(p).resolve())
-    for p in (
-        as_list(site.getsitepackages())
-        + as_list(site.getusersitepackages())
-        + _get_sys_config_paths()
-        + _get_extensions_dir()
-    )
-)
-
-
-def normalize_path(file_path: str) -> str:
-    """Returns normalized path."""
-    return str(pathlib.Path(file_path).resolve())
+    Mypy passes a partial env dict (extra vars only) — merge with os.environ
+    to preserve the full environment, matching the original behavior.
+    """
+    new_env = os.environ.copy()
+    if env is not None:
+        new_env.update(env)
+    return _run_path(argv=argv, use_stdin=False, cwd=cwd, env=new_env)
 
 
 def is_same_path(file_path1: str, file_path2: str) -> bool:
     """Returns true if two paths are the same, resolving symlinks."""
-    return pathlib.Path(file_path1).resolve() == pathlib.Path(file_path2).resolve()
+    return _is_same_path(file_path1, file_path2, resolve_symlinks=True)
 
 
 def absolute_path(file_path: str) -> str:
@@ -94,191 +75,6 @@ def absolute_path(file_path: str) -> str:
     return str(pathlib.Path(file_path).absolute())
 
 
-def is_current_interpreter(executable: str) -> bool:
-    """Returns true if the executable path is same as the current interpreter."""
-    return is_same_path(executable, sys.executable)
-
-
 def is_stdlib_file(file_path: str) -> bool:
-    """Return True if the file belongs to the standard library."""
-    normalized_path = str(pathlib.Path(file_path).resolve())
-    return any(normalized_path.startswith(path) for path in _stdlib_paths)
-
-
-def _get_relative_path(file_path: str, workspace_root: str) -> str:
-    """Returns the file path relative to the workspace root.
-
-    Falls back to the original path if the workspace root is empty or
-    the paths are on different drives (Windows).
-    """
-    if not workspace_root:
-        return pathlib.Path(file_path).as_posix()
-    try:
-        return pathlib.Path(file_path).relative_to(workspace_root).as_posix()
-    except ValueError:
-        return pathlib.Path(file_path).as_posix()
-
-
-def is_match(patterns: List[str], file_path: str, workspace_root: str) -> bool:
-    """Returns true if the file matches one of the fnmatch patterns."""
-    if not patterns:
-        return False
-    relative_path = _get_relative_path(file_path, workspace_root)
-    file_name = pathlib.Path(file_path).name
-    return any(
-        fnmatch.fnmatch(relative_path, pattern)
-        or (not pattern.startswith("/") and fnmatch.fnmatch(file_name, pattern))
-        for pattern in patterns
-    )
-
-
-# pylint: disable-next=too-few-public-methods
-class RunResult:
-    """Object to hold result from running tool."""
-
-    def __init__(
-        self, stdout: str, stderr: str, exit_code: Optional[Union[int, str]] = None
-    ):
-        self.stdout: str = stdout
-        self.stderr: str = stderr
-        self.exit_code: Optional[Union[int, str]] = exit_code
-
-
-class CustomIO(io.TextIOWrapper):
-    """Custom stream object to replace stdio."""
-
-    name = None
-
-    def __init__(self, name, encoding="utf-8", newline=None):
-        self._buffer = io.BytesIO()
-        self._buffer.name = name
-        super().__init__(self._buffer, encoding=encoding, newline=newline)
-
-    def close(self):
-        """Provide this close method which is used by some tools."""
-        # This is intentionally empty.
-
-    def get_value(self) -> str:
-        """Returns value from the buffer as string."""
-        self.seek(0)
-        return self.read()
-
-
-@contextlib.contextmanager
-def substitute_attr(obj: Any, attribute: str, new_value: Any):
-    """Manage object attributes context when using runpy.run_module()."""
-    old_value = getattr(obj, attribute)
-    setattr(obj, attribute, new_value)
-    yield
-    setattr(obj, attribute, old_value)
-
-
-@contextlib.contextmanager
-def redirect_io(stream: str, new_stream):
-    """Redirect stdio streams to a custom stream."""
-    old_stream = getattr(sys, stream)
-    setattr(sys, stream, new_stream)
-    yield
-    setattr(sys, stream, old_stream)
-
-
-@contextlib.contextmanager
-def change_cwd(new_cwd):
-    """Change working directory before running code."""
-    os.chdir(new_cwd)
-    yield
-    os.chdir(SERVER_CWD)
-
-
-def _run_module(
-    module: str, argv: Sequence[str], use_stdin: bool, source: str = None
-) -> RunResult:
-    """Runs as a module."""
-    str_output = CustomIO("<stdout>", encoding="utf-8")
-    str_error = CustomIO("<stderr>", encoding="utf-8")
-    exit_code = None
-
-    try:
-        with substitute_attr(sys, "argv", argv):
-            with redirect_io("stdout", str_output):
-                with redirect_io("stderr", str_error):
-                    if use_stdin and source is not None:
-                        str_input = CustomIO("<stdin>", encoding="utf-8", newline="\n")
-                        with redirect_io("stdin", str_input):
-                            str_input.write(source)
-                            str_input.seek(0)
-                            runpy.run_module(module, run_name="__main__")
-                    else:
-                        runpy.run_module(module, run_name="__main__")
-    except SystemExit as ex:
-        exit_code = ex.code
-
-    return RunResult(str_output.get_value(), str_error.get_value(), exit_code)
-
-
-def run_module(
-    module: str, argv: Sequence[str], use_stdin: bool, cwd: str, source: str = None
-) -> RunResult:
-    """Runs as a module."""
-    with CWD_LOCK:
-        if is_same_path(os.getcwd(), cwd):
-            return _run_module(module, argv, use_stdin, source)
-        with change_cwd(cwd):
-            return _run_module(module, argv, use_stdin, source)
-
-
-def run_path(argv: Sequence[str], cwd: str, env: Dict[str, str] = None) -> RunResult:
-    """Runs as an executable."""
-    new_env = os.environ.copy()
-    if env is not None:
-        new_env.update(env)
-    result = subprocess.run(
-        argv,
-        encoding="utf-8",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-        cwd=cwd,
-        env=new_env,
-    )
-    return RunResult(result.stdout, result.stderr, result.returncode)
-
-
-def run_api(
-    callback: Callable[[Sequence[str], Optional[CustomIO]], Tuple[str, str, int]],
-    argv: Sequence[str],
-    use_stdin: bool,
-    cwd: str,
-    source: str = None,
-) -> RunResult:
-    """Run a API."""
-    with CWD_LOCK:
-        if is_same_path(os.getcwd(), cwd):
-            return _run_api(callback, argv, use_stdin, source)
-        with change_cwd(cwd):
-            return _run_api(callback, argv, use_stdin, source)
-
-
-def _run_api(
-    callback: Callable[[Sequence[str], Optional[CustomIO]], Tuple[str, str, int]],
-    argv: Sequence[str],
-    use_stdin: bool,
-    source: str = None,
-) -> RunResult:
-    str_output = None
-    str_error = None
-
-    try:
-        with substitute_attr(sys, "argv", argv):
-            if use_stdin and source is not None:
-                str_input = CustomIO("<stdin>", encoding="utf-8", newline="\n")
-                with redirect_io("stdin", str_input):
-                    str_input.write(source)
-                    str_input.seek(0)
-                    str_output, str_error, exit_code = callback(argv, str_input)
-            else:
-                str_output, str_error, exit_code = callback(argv, None)
-    except SystemExit:
-        pass
-
-    return RunResult(str_output, str_error, exit_code)
+    """Return True if the file belongs to a non-user Python path."""
+    return classify_python_file(file_path) is not None

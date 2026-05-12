@@ -9,8 +9,8 @@ import json
 import os
 import pathlib
 import sys
-import sysconfig
 import tempfile
+import threading
 import traceback
 import uuid
 from dataclasses import dataclass
@@ -29,26 +29,6 @@ def update_sys_path(path_to_add: str, strategy: str) -> None:
             sys.path.append(path_to_add)
 
 
-# **********************************************************
-# Update PATH before running anything.
-# **********************************************************
-def update_environ_path() -> None:
-    """Update PATH environment variable with the 'scripts' directory.
-    Windows: .venv/Scripts
-    Linux/MacOS: .venv/bin
-    """
-    scripts = sysconfig.get_path("scripts")
-    paths_variants = ["Path", "PATH"]
-
-    for var_name in paths_variants:
-        if var_name in os.environ:
-            paths = os.environ[var_name].split(os.pathsep)
-            if scripts not in paths:
-                paths.insert(0, scripts)
-                os.environ[var_name] = os.pathsep.join(paths)
-                break
-
-
 # Ensure that we can import LSP libraries, and other bundled libraries.
 BUNDLE_DIR = pathlib.Path(__file__).parent.parent
 BUNDLED_LIBS = os.fspath(BUNDLE_DIR / "libs")
@@ -58,8 +38,6 @@ update_sys_path(
     BUNDLED_LIBS,
     os.getenv("LS_IMPORT_STRATEGY", "useBundled"),
 )
-update_environ_path()
-
 # **********************************************************
 # Imports needed for the language server goes below this.
 # **********************************************************
@@ -70,6 +48,14 @@ from packaging.version import parse as parse_version
 from pygls import uris
 from pygls.lsp.server import LanguageServer
 from pygls.workspace import TextDocument
+from vscode_common_python_lsp import (
+    RunResult,
+    is_match,
+    normalize_path,
+    update_environ_path,
+)
+
+update_environ_path()
 
 WORKSPACE_SETTINGS = {}
 GLOBAL_SETTINGS = {}
@@ -110,7 +96,7 @@ class MypyInfo:
 MYPY_INFO_TABLE: Dict[str, MypyInfo] = {}
 
 
-def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
+def get_mypy_info(settings: Dict[str, Any]) -> Optional[MypyInfo]:
     try:
         code_workspace = settings["workspaceFS"]
         if code_workspace not in MYPY_INFO_TABLE:
@@ -127,14 +113,17 @@ def get_mypy_info(settings: Dict[str, Any]) -> MypyInfo:
             MYPY_INFO_TABLE[code_workspace] = MypyInfo(version, is_daemon)
         return MYPY_INFO_TABLE[code_workspace]
     except:  # noqa: E722
-        log_to_output(
-            f"Error while checking mypy executable:\r\n{traceback.format_exc()}"
+        log_error(
+            f"Mypy failed to run. Check that mypy is installed and the "
+            f"'mypy-type-checker.interpreter' or 'mypy-type-checker.path' "
+            f"settings are correct.\r\n{traceback.format_exc()}"
         )
+        return None
 
 
 def _run_unidentified_tool(
     extra_args: Sequence[str], settings: Dict[str, Any]
-) -> utils.RunResult:
+) -> RunResult:
     """Runs the tool given by the settings without knowing what it is.
 
     This is supposed to be called only in `get_mypy_info`.
@@ -166,6 +155,14 @@ def did_open(params: lsp.DidOpenTextDocumentParams) -> None:
     _linting_helper(document)
 
 
+# Track lint request versions per URI to discard stale results from superseded runs.
+# This is a deduplication mechanism (not debounce): each save spawns a lint process,
+# but only the latest result is published. Rapid saves produce multiple runs where
+# only the last one's output is kept.
+_lint_versions: Dict[str, int] = {}
+_lint_versions_lock = threading.Lock()
+
+
 @LSP_SERVER.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
 def did_save(params: lsp.DidSaveTextDocumentParams) -> None:
     """LSP handler for textDocument/didSave request."""
@@ -181,6 +178,9 @@ def did_close(params: lsp.DidCloseTextDocumentParams) -> None:
     if settings["reportingScope"] == "file":
         # Publishing empty diagnostics to clear the entries for this file.
         _clear_diagnostics(document)
+    # Clean up lint version tracking for closed documents
+    with _lint_versions_lock:
+        _lint_versions.pop(document.uri, None)
 
 
 def _is_empty_diagnostics(
@@ -203,6 +203,38 @@ def _clear_diagnostics(document: TextDocument) -> None:
     )
 
 
+# Patterns that indicate mypy misconfiguration or startup errors.
+# Only patterns that are unambiguously mypy infrastructure errors, not
+# normal type-checking diagnostics for user code.  "No module named",
+# "missing imports", and "Cannot find implementation or library stub" are
+# excluded because they are routine diagnostic messages (especially in
+# daemon mode where diagnostics are emitted on stderr).
+_MISCONFIGURATION_PATTERNS = [
+    "mypy: error:",
+    "Could not find a config file",
+    "Error constructing plugin",
+    "plugin is not installed",
+    "invalid config",
+]
+
+# Track last reported misconfiguration to suppress duplicates
+_last_misconfiguration_msg: Dict[str, str] = {}
+
+
+def _check_for_misconfiguration(stderr: str) -> None:
+    """Check stderr for common misconfiguration patterns and surface them
+    as user-visible error notifications. Only reports each unique message once."""
+    for line in stderr.splitlines():
+        line_lower = line.lower()
+        for pattern in _MISCONFIGURATION_PATTERNS:
+            if pattern.lower() in line_lower:
+                msg = stderr.strip()
+                if msg != _last_misconfiguration_msg.get("msg"):
+                    _last_misconfiguration_msg["msg"] = msg
+                    log_error(f"Mypy configuration issue detected:\r\n{msg}")
+                return
+
+
 def _linting_helper(document: TextDocument) -> None:
     try:
         extra_args = []
@@ -223,7 +255,7 @@ def _linting_helper(document: TextDocument) -> None:
             _clear_diagnostics(document)
             return None
 
-        if settings["reportingScope"] == "file" and utils.is_match(
+        if settings["reportingScope"] == "file" and is_match(
             settings["ignorePatterns"], document.path, settings["workspaceFS"]
         ):
             log_warning(
@@ -232,11 +264,39 @@ def _linting_helper(document: TextDocument) -> None:
             _clear_diagnostics(document)
             return None
 
-        version = get_mypy_info(settings).version
+        mypy_info = get_mypy_info(settings)
+        if mypy_info is None:
+            _clear_diagnostics(document)
+            return None
+
+        # Bump the version for this URI so any concurrent or queued lint for
+        # the same document can detect that it has been superseded.
+        with _lint_versions_lock:
+            lint_version = _lint_versions.get(document.uri, 0) + 1
+            _lint_versions[document.uri] = lint_version
+
+        version = mypy_info.version
         if (version.major, version.minor) >= (0, 991) and sys.version_info >= (3, 8):
             extra_args += ["--show-error-end"]
 
         result = _run_tool_on_document(document, extra_args=extra_args)
+
+        # Check for misconfiguration before staleness check so warnings
+        # are surfaced even if this run is superseded by a newer one.
+        if result and result.stderr:
+            _check_for_misconfiguration(result.stderr)
+
+        # If a newer lint request arrived while we were running, discard
+        # these stale results — the newer request will publish its own.
+        with _lint_versions_lock:
+            if _lint_versions.get(document.uri, 0) != lint_version:
+                log_to_output(
+                    f"Discarding stale lint results for {document.uri} "
+                    f"(version {lint_version} superseded by "
+                    f"{_lint_versions[document.uri]})"
+                )
+                return []
+
         # Some mypy modes (e.g., non_interactive) emit diagnostics on stderr.
         # Prefer parsing combined output so we don't miss errors when stdout is empty.
         if result and (result.stdout or result.stderr):
@@ -284,12 +344,7 @@ def _linting_helper(document: TextDocument) -> None:
         else:
             _clear_diagnostics(document)
     except Exception:
-        LSP_SERVER.window_log_message(
-            lsp.LogMessageParams(
-                type=lsp.MessageType.Error,
-                message=f"Linting failed with error:\r\n{traceback.format_exc()}",
-            )
-        )
+        log_error(f"Linting failed with error:\r\n{traceback.format_exc()}")
     return []
 
 
@@ -458,7 +513,8 @@ def initialize(params: lsp.InitializeParams) -> None:
 def on_exit(_params: Optional[Any] = None) -> None:
     """Handle clean up on exit."""
     for settings in WORKSPACE_SETTINGS.values():
-        if get_mypy_info(settings).is_daemon:
+        mypy_info = get_mypy_info(settings)
+        if mypy_info and mypy_info.is_daemon:
             try:
                 _run_dmypy_command([], copy.deepcopy(settings), "kill")
             except Exception:
@@ -469,7 +525,8 @@ def on_exit(_params: Optional[Any] = None) -> None:
 def on_shutdown(_params: Optional[Any] = None) -> None:
     """Handle clean up on shutdown."""
     for settings in WORKSPACE_SETTINGS.values():
-        if get_mypy_info(settings).is_daemon:
+        mypy_info = get_mypy_info(settings)
+        if mypy_info and mypy_info.is_daemon:
             try:
                 _run_dmypy_command([], copy.deepcopy(settings), "stop")
             except Exception:
@@ -479,7 +536,10 @@ def on_shutdown(_params: Optional[Any] = None) -> None:
 def _log_version_info() -> None:
     for settings in WORKSPACE_SETTINGS.values():
         code_workspace = settings["workspaceFS"]
-        actual_version = get_mypy_info(settings).version
+        mypy_info = get_mypy_info(settings)
+        if mypy_info is None:
+            continue
+        actual_version = mypy_info.version
         min_version = parse_version(MIN_VERSION)
 
         if actual_version < min_version:
@@ -522,7 +582,7 @@ def _get_global_defaults():
 
 def _update_workspace_settings(settings):
     if not settings:
-        key = utils.normalize_path(os.getcwd())
+        key = normalize_path(os.getcwd())
         WORKSPACE_SETTINGS[key] = {
             "cwd": key,
             "workspaceFS": key,
@@ -532,7 +592,7 @@ def _update_workspace_settings(settings):
         return
 
     for setting in settings:
-        key = utils.normalize_path(uris.to_fs_path(setting["workspace"]))
+        key = normalize_path(uris.to_fs_path(setting["workspace"]))
         WORKSPACE_SETTINGS[key] = {
             **setting,
             "workspaceFS": key,
@@ -543,7 +603,7 @@ def _get_settings_by_path(file_path: pathlib.Path):
     workspaces = {s["workspaceFS"] for s in WORKSPACE_SETTINGS.values()}
 
     while file_path != file_path.parent:
-        str_file_path = utils.normalize_path(file_path)
+        str_file_path = normalize_path(file_path)
         if str_file_path in workspaces:
             return WORKSPACE_SETTINGS[str_file_path]
         file_path = file_path.parent
@@ -559,7 +619,7 @@ def _get_document_key(document: TextDocument):
 
         # Find workspace settings for the given file.
         while document_workspace != document_workspace.parent:
-            norm_path = utils.normalize_path(document_workspace)
+            norm_path = normalize_path(document_workspace)
             if norm_path in workspaces:
                 return norm_path
             document_workspace = document_workspace.parent
@@ -574,7 +634,7 @@ def _get_settings_by_document(document: TextDocument | None):
     key = _get_document_key(document)
     if key is None:
         # This is either a non-workspace file or there is no workspace.
-        key = utils.normalize_path(pathlib.Path(document.path).parent)
+        key = normalize_path(pathlib.Path(document.path).parent)
         return {
             "cwd": key,
             "workspaceFS": key,
@@ -607,7 +667,7 @@ def _get_dmypy_args(settings: Dict[str, Any], command: str) -> List[str]:
     - hang    : Hang for 100 seconds
     - daemon  : Run daemon in foreground
     """
-    key = utils.normalize_path(settings["workspaceFS"])
+    key = normalize_path(settings["workspaceFS"])
     valid_commands = [
         "start",
         "restart",
@@ -660,21 +720,40 @@ def _get_env_vars(settings: Dict[str, Any]) -> Dict[str, str]:
 
 
 def get_cwd(settings: Dict[str, Any], document: Optional[TextDocument]) -> str:
-    """Returns cwd for the given settings and document."""
-    # this happens when running dmypy.
-    if document is None:
-        return settings["workspaceFS"]
+    """Returns cwd for the given settings and document.
 
-    if settings["cwd"] == "${workspaceFolder}":
-        return settings["workspaceFS"]
+    Resolves the following VS Code file-related variable substitutions when
+    a document is available:
 
-    if settings["cwd"] == "${fileDirname}":
-        return os.fspath(pathlib.Path(document.path).parent)
+    - ``${file}`` – absolute path of the current document.
+    - ``${fileBasename}`` – file name with extension (e.g. ``foo.py``).
+    - ``${fileBasenameNoExtension}`` – file name without extension (e.g. ``foo``).
+    - ``${fileExtname}`` – file extension including the dot (e.g. ``.py``).
+    - ``${fileDirname}`` – directory containing the current document.
+    - ``${fileDirnameBasename}`` – name of the directory containing the document.
+    - ``${relativeFile}`` – document path relative to the workspace root.
+    - ``${relativeFileDirname}`` – document directory relative to the workspace root.
+    - ``${fileWorkspaceFolder}`` – workspace root folder for the document.
 
-    if settings["cwd"] == "${nearestConfig}":
-        workspaceFolder = pathlib.Path(settings["workspaceFS"])
+    Variables that do not depend on the document (``${workspaceFolder}``,
+    ``${userHome}``, ``${cwd}``) are pre-resolved by the TypeScript client.
+
+    The special mypy-specific value ``${nearestConfig}`` walks up the directory
+    tree from the document's location to find the nearest mypy configuration file
+    (mypy.ini, .mypy.ini, pyproject.toml, setup.cfg).
+
+    If no document is available and the value contains any unresolvable
+    file-variable, the workspace root is returned as a fallback.
+    """
+    cwd = settings.get("cwd", settings["workspaceFS"])
+    workspace_fs = settings["workspaceFS"]
+
+    # mypy-specific: walk up to find nearest mypy configuration file
+    if cwd == "${nearestConfig}":
+        if not document or not document.path:
+            return workspace_fs
+        workspaceFolder = pathlib.Path(workspace_fs)
         candidate = pathlib.Path(document.path).parent
-        # check if pyproject exists
         check_for = ["mypy.ini", ".mypy.ini", "pyproject.toml", "setup.cfg"]
         # until we leave the workspace
         while candidate.is_relative_to(workspaceFolder):
@@ -693,15 +772,41 @@ def get_cwd(settings: Dict[str, Any], document: Optional[TextDocument]) -> str:
                 f"failed to find {', '.join(check_for)}; using workspace root",
                 lsp.MessageType.Debug,
             )
-            return settings["workspaceFS"]
+            return workspace_fs
 
-    return settings["cwd"]
+    if document and document.path:
+        file_path = document.path
+        file_dir = os.path.dirname(file_path)
+        file_basename = os.path.basename(file_path)
+        file_stem, file_ext = os.path.splitext(file_basename)
+
+        substitutions = {
+            "${file}": file_path,
+            "${fileBasename}": file_basename,
+            "${fileBasenameNoExtension}": file_stem,
+            "${fileExtname}": file_ext,
+            "${fileDirname}": file_dir,
+            "${fileDirnameBasename}": os.path.basename(file_dir),
+            "${relativeFile}": os.path.relpath(file_path, workspace_fs),
+            "${relativeFileDirname}": os.path.relpath(file_dir, workspace_fs),
+            "${fileWorkspaceFolder}": workspace_fs,
+        }
+
+        for token, value in substitutions.items():
+            cwd = cwd.replace(token, value)
+    else:
+        # Without a document we cannot resolve file-related variables.
+        # Fall back to workspace root if any remain.
+        if "${file" in cwd or "${relativeFile" in cwd:
+            cwd = workspace_fs
+
+    return cwd
 
 
 def _run_tool_on_document(
     document: TextDocument,
     extra_args: Sequence[str] = None,
-) -> utils.RunResult | None:
+) -> RunResult | None:
     """Runs tool on the given document.
 
     if use_stdin is true then contents of the document is passed to the
@@ -715,12 +820,14 @@ def _run_tool_on_document(
 
     cwd = get_cwd(settings, document)
 
+    mypy_info = get_mypy_info(settings)
+
     if settings["path"]:
         argv = settings["path"]
     else:
         argv = settings["interpreter"] or [sys.executable]
-        argv += ["-m", "mypy.dmypy" if get_mypy_info(settings).is_daemon else "mypy"]
-    if get_mypy_info(settings).is_daemon:
+        argv += ["-m", "mypy.dmypy" if mypy_info and mypy_info.is_daemon else "mypy"]
+    if mypy_info and mypy_info.is_daemon:
         argv += _get_dmypy_args(settings, "run")
     argv += TOOL_ARGS + settings["args"] + extra_args
     if settings["reportingScope"] == "file":
@@ -750,8 +857,9 @@ def _run_tool_on_document(
 
 def _run_dmypy_command(
     extra_args: Sequence[str], settings: Dict[str, Any], command: str
-) -> utils.RunResult:
-    if not get_mypy_info(settings).is_daemon:
+) -> RunResult:
+    mypy_info = get_mypy_info(settings)
+    if not mypy_info or not mypy_info.is_daemon:
         log_error(f"dmypy command called in non-daemon context: {command}")
         raise ValueError(f"dmypy command called in non-daemon context: {command}")
 
