@@ -27,7 +27,6 @@ export function logLegacySettings(): void {
         try {
             const legacyConfig = getConfiguration('python', workspace.uri);
             const legacyMypyEnabled = legacyConfig.get<boolean>('linting.mypyEnabled', false);
-            const legacyMypyPath = legacyConfig.get<string>('linting.mypyPath', '');
             if (legacyMypyEnabled) {
                 traceWarn(`"python.linting.mypyEnabled" is deprecated. You can remove that setting.`);
                 traceWarn(
@@ -38,11 +37,6 @@ export function logLegacySettings(): void {
                     `"python.linting.mypyEnabled" value for workspace ${workspace.uri.fsPath}: ${legacyMypyEnabled}`,
                 );
             }
-            if (legacyMypyPath.length > 0 && legacyMypyPath !== 'mypy') {
-                traceWarn(`"python.linting.mypyPath" is deprecated. Use "mypy-type-checker.path" instead.`);
-                traceWarn(`"python.linting.mypyPath" value for workspace ${workspace.uri.fsPath}:`);
-                traceWarn(`\n${JSON.stringify(legacyMypyPath, null, 4)}`);
-            }
         } catch (err) {
             traceWarn(`Error while logging legacy settings: ${err}`);
         }
@@ -52,5 +46,6 @@ export function logLegacySettings(): void {
     _logLegacySettings('mypy-type-checker', [
         { legacyKey: 'linting.cwd', newKey: 'cwd' },
         { legacyKey: 'linting.mypyArgs', newKey: 'args', isArray: true },
+        { legacyKey: 'linting.mypyPath', newKey: 'path', defaultValue: 'mypy' },
     ]);
 }
