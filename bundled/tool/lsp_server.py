@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import copy
-import json
 import os
 import pathlib
 import sys
@@ -50,15 +49,14 @@ from pygls.lsp.server import LanguageServer
 from pygls.workspace import TextDocument
 from vscode_common_python_lsp import (
     RunResult,
+    ToolServer,
+    ToolServerConfig,
     is_match,
     normalize_path,
     update_environ_path,
 )
 
 update_environ_path()
-
-WORKSPACE_SETTINGS = {}
-GLOBAL_SETTINGS = {}
 
 MAX_WORKERS = 5
 LSP_SERVER = LanguageServer(name="Mypy", version="v0.1.0", max_workers=MAX_WORKERS)
@@ -69,17 +67,40 @@ DMYPY_STATUS_FILE_ROOT = None
 # **********************************************************
 # Tool specific code goes below this.
 # **********************************************************
-TOOL_MODULE = "mypy"
-TOOL_DISPLAY = "Mypy"
-TOOL_ARGS = [
-    "--no-color-output",
-    "--no-error-summary",
-    "--show-absolute-path",
-    "--show-column-numbers",
-    "--show-error-codes",
-    "--no-pretty",
-]
-MIN_VERSION = "1.0.0"
+MYPY_CONFIG = ToolServerConfig(
+    tool_module="mypy",
+    tool_display="Mypy",
+    tool_args=[
+        "--no-color-output",
+        "--no-error-summary",
+        "--show-absolute-path",
+        "--show-column-numbers",
+        "--show-error-codes",
+        "--no-pretty",
+    ],
+    min_version="1.0.0",
+    default_settings={
+        "severity": {
+            "error": "Error",
+            "note": "Information",
+        },
+        "ignorePatterns": [],
+        "extraPaths": [],
+        "reportingScope": "file",
+        "preferDaemon": True,
+        "daemonStatusFile": "",
+    },
+)
+
+tool_server = ToolServer(MYPY_CONFIG, server=LSP_SERVER)
+
+WORKSPACE_SETTINGS = tool_server.workspace_settings
+GLOBAL_SETTINGS = tool_server.global_settings
+
+TOOL_MODULE = MYPY_CONFIG.tool_module
+TOOL_DISPLAY = MYPY_CONFIG.tool_display
+TOOL_ARGS = MYPY_CONFIG.tool_args
+MIN_VERSION = MYPY_CONFIG.min_version
 
 # **********************************************************
 # Linting features start here
@@ -467,28 +488,17 @@ def _get_severity(
 @LSP_SERVER.feature(lsp.INITIALIZE)
 def initialize(params: lsp.InitializeParams) -> None:
     """LSP handler for initialize request."""
-    log_to_output(f"CWD Server: {os.getcwd()}")
     import_strategy = os.getenv("LS_IMPORT_STRATEGY", "useBundled")
     update_sys_path(os.getcwd(), import_strategy)
-
-    GLOBAL_SETTINGS.update(**params.initialization_options.get("globalSettings", {}))
-
-    settings = params.initialization_options["settings"]
-    _update_workspace_settings(settings)
-    log_to_output(
-        f"Settings used to run Server:\r\n{json.dumps(settings, indent=4, ensure_ascii=False)}\r\n"
-    )
-    log_to_output(
-        f"Global settings:\r\n{json.dumps(GLOBAL_SETTINGS, indent=4, ensure_ascii=False)}\r\n"
-    )
+    tool_server.apply_settings(params)
+    settings = (params.initialization_options or {}).get("settings")
 
     # Add extra paths to sys.path
-    setting = _get_settings_by_path(pathlib.Path(os.getcwd()))
+    setting = tool_server.get_settings_by_path(pathlib.Path(os.getcwd()))
     for extra in setting.get("extraPaths", []):
         update_sys_path(extra, import_strategy)
 
-    paths = "\r\n   ".join(sys.path)
-    log_to_output(f"sys.path used to run Server:\r\n   {paths}")
+    tool_server.log_startup_info(settings)
 
     global DMYPY_STATUS_FILE_ROOT
     if "DMYPY_STATUS_FILE_ROOT" in os.environ:
@@ -557,92 +567,26 @@ def _log_version_info() -> None:
 
 # *****************************************************
 # Internal functional and settings management APIs.
+# Thin wrappers delegating to ToolServer for backward compatibility.
 # *****************************************************
 def _get_global_defaults():
-    return {
-        "path": GLOBAL_SETTINGS.get("path", []),
-        "interpreter": GLOBAL_SETTINGS.get("interpreter", [sys.executable]),
-        "args": GLOBAL_SETTINGS.get("args", []),
-        "severity": GLOBAL_SETTINGS.get(
-            "severity",
-            {
-                "error": "Error",
-                "note": "Information",
-            },
-        ),
-        "ignorePatterns": GLOBAL_SETTINGS.get("ignorePatterns", []),
-        "importStrategy": GLOBAL_SETTINGS.get("importStrategy", "useBundled"),
-        "showNotifications": GLOBAL_SETTINGS.get("showNotifications", "off"),
-        "extraPaths": GLOBAL_SETTINGS.get("extraPaths", []),
-        "reportingScope": GLOBAL_SETTINGS.get("reportingScope", "file"),
-        "preferDaemon": GLOBAL_SETTINGS.get("preferDaemon", True),
-        "daemonStatusFile": GLOBAL_SETTINGS.get("daemonStatusFile", ""),
-    }
+    return tool_server.get_global_defaults()
 
 
 def _update_workspace_settings(settings):
-    if not settings:
-        key = normalize_path(os.getcwd())
-        WORKSPACE_SETTINGS[key] = {
-            "cwd": key,
-            "workspaceFS": key,
-            "workspace": uris.from_fs_path(key),
-            **_get_global_defaults(),
-        }
-        return
-
-    for setting in settings:
-        key = normalize_path(uris.to_fs_path(setting["workspace"]))
-        WORKSPACE_SETTINGS[key] = {
-            **setting,
-            "workspaceFS": key,
-        }
+    tool_server.update_workspace_settings(settings)
 
 
 def _get_settings_by_path(file_path: pathlib.Path):
-    workspaces = {s["workspaceFS"] for s in WORKSPACE_SETTINGS.values()}
-
-    while file_path != file_path.parent:
-        str_file_path = normalize_path(file_path)
-        if str_file_path in workspaces:
-            return WORKSPACE_SETTINGS[str_file_path]
-        file_path = file_path.parent
-
-    setting_values = list(WORKSPACE_SETTINGS.values())
-    return setting_values[0]
+    return tool_server.get_settings_by_path(file_path)
 
 
 def _get_document_key(document: TextDocument):
-    if WORKSPACE_SETTINGS:
-        document_workspace = pathlib.Path(document.path)
-        workspaces = {s["workspaceFS"] for s in WORKSPACE_SETTINGS.values()}
-
-        # Find workspace settings for the given file.
-        while document_workspace != document_workspace.parent:
-            norm_path = normalize_path(document_workspace)
-            if norm_path in workspaces:
-                return norm_path
-            document_workspace = document_workspace.parent
-
-    return None
+    return tool_server.get_document_key(document)
 
 
 def _get_settings_by_document(document: TextDocument | None):
-    if document is None or document.path is None:
-        return list(WORKSPACE_SETTINGS.values())[0]
-
-    key = _get_document_key(document)
-    if key is None:
-        # This is either a non-workspace file or there is no workspace.
-        key = normalize_path(pathlib.Path(document.path).parent)
-        return {
-            "cwd": key,
-            "workspaceFS": key,
-            "workspace": uris.from_fs_path(key),
-            **_get_global_defaults(),
-        }
-
-    return WORKSPACE_SETTINGS[str(key)]
+    return tool_server.get_settings_by_document(document)
 
 
 # *****************************************************
@@ -774,33 +718,7 @@ def get_cwd(settings: Dict[str, Any], document: Optional[TextDocument]) -> str:
             )
             return workspace_fs
 
-    if document and document.path:
-        file_path = document.path
-        file_dir = os.path.dirname(file_path)
-        file_basename = os.path.basename(file_path)
-        file_stem, file_ext = os.path.splitext(file_basename)
-
-        substitutions = {
-            "${file}": file_path,
-            "${fileBasename}": file_basename,
-            "${fileBasenameNoExtension}": file_stem,
-            "${fileExtname}": file_ext,
-            "${fileDirname}": file_dir,
-            "${fileDirnameBasename}": os.path.basename(file_dir),
-            "${relativeFile}": os.path.relpath(file_path, workspace_fs),
-            "${relativeFileDirname}": os.path.relpath(file_dir, workspace_fs),
-            "${fileWorkspaceFolder}": workspace_fs,
-        }
-
-        for token, value in substitutions.items():
-            cwd = cwd.replace(token, value)
-    else:
-        # Without a document we cannot resolve file-related variables.
-        # Fall back to workspace root if any remain.
-        if "${file" in cwd or "${relativeFile" in cwd:
-            cwd = workspace_fs
-
-    return cwd
+    return tool_server.get_cwd(settings, document)
 
 
 def _run_tool_on_document(
@@ -816,7 +734,7 @@ def _run_tool_on_document(
         extra_args = []
 
     # deep copy here to prevent accidentally updating global settings.
-    settings = copy.deepcopy(_get_settings_by_document(document))
+    settings = copy.deepcopy(tool_server.get_settings_by_document(document))
 
     cwd = get_cwd(settings, document)
 
@@ -841,17 +759,17 @@ def _run_tool_on_document(
         # Let mypy use files defined by the configuration
         pass
 
-    log_to_output(" ".join(argv))
-    log_to_output(f"CWD Server: {cwd}")
+    tool_server.log_to_output(" ".join(argv))
+    tool_server.log_to_output(f"CWD Server: {cwd}")
     result = utils.run_path(
         argv=argv,
         cwd=cwd,
         env=_get_env_vars(settings),
     )
     if result.stderr:
-        log_to_output(result.stderr)
+        tool_server.log_to_output(result.stderr)
 
-    log_to_output(f"{document.uri} :\r\n{result.stdout}")
+    tool_server.log_to_output(f"{document.uri} :\r\n{result.stdout}")
     return result
 
 
@@ -873,14 +791,14 @@ def _run_dmypy_command(
 
     argv += _get_dmypy_args(settings, command)
     argv += extra_args
-    log_to_output(" ".join(argv))
-    log_to_output(f"CWD Server: {cwd}")
+    tool_server.log_to_output(" ".join(argv))
+    tool_server.log_to_output(f"CWD Server: {cwd}")
 
     result = utils.run_path(argv=argv, cwd=cwd, env=_get_env_vars(settings))
     if result.stderr:
-        log_to_output(result.stderr)
+        tool_server.log_to_output(result.stderr)
 
-    log_to_output(f"\r\n{result.stdout}\r\n")
+    tool_server.log_to_output(f"\r\n{result.stdout}\r\n")
     return result
 
 
@@ -890,37 +808,19 @@ def _run_dmypy_command(
 def log_to_output(
     message: str, msg_type: lsp.MessageType = lsp.MessageType.Log
 ) -> None:
-    LSP_SERVER.window_log_message(lsp.LogMessageParams(type=msg_type, message=message))
+    tool_server.log_to_output(message, msg_type)
 
 
 def log_error(message: str) -> None:
-    LSP_SERVER.window_log_message(
-        lsp.LogMessageParams(type=lsp.MessageType.Error, message=message)
-    )
-    if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["onError", "onWarning", "always"]:
-        LSP_SERVER.window_show_message(
-            lsp.ShowMessageParams(type=lsp.MessageType.Error, message=message)
-        )
+    tool_server.log_error(message)
 
 
 def log_warning(message: str) -> None:
-    LSP_SERVER.window_log_message(
-        lsp.LogMessageParams(type=lsp.MessageType.Warning, message=message)
-    )
-    if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["onWarning", "always"]:
-        LSP_SERVER.window_show_message(
-            lsp.ShowMessageParams(type=lsp.MessageType.Warning, message=message)
-        )
+    tool_server.log_warning(message)
 
 
 def log_always(message: str) -> None:
-    LSP_SERVER.window_log_message(
-        lsp.LogMessageParams(type=lsp.MessageType.Info, message=message)
-    )
-    if os.getenv("LS_SHOW_NOTIFICATION", "off") in ["always"]:
-        LSP_SERVER.window_show_message(
-            lsp.ShowMessageParams(type=lsp.MessageType.Info, message=message)
-        )
+    tool_server.log_always(message)
 
 
 # *****************************************************
