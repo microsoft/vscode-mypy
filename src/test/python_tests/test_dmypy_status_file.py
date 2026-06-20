@@ -56,6 +56,23 @@ def test_dmypy_args_generates_status_file_when_not_set():
         _clear_dmypy_cache()
 
 
+def test_dmypy_args_generates_status_file_when_setting_is_missing():
+    """Older settings payloads may not include daemonStatusFile."""
+    _clear_dmypy_cache()
+    old_root = lsp_server.DMYPY_STATUS_FILE_ROOT
+    lsp_server.DMYPY_STATUS_FILE_ROOT = pathlib.Path(os.environ.get("TEMP", "/tmp"))
+    try:
+        settings = {"workspaceFS": "/workspace/missing_setting"}
+        result = lsp_server._get_dmypy_args(settings, "run")
+        assert "--status-file" in result
+        idx = result.index("--status-file")
+        assert result[idx + 1] != ""
+        assert "status-" in result[idx + 1]
+    finally:
+        lsp_server.DMYPY_STATUS_FILE_ROOT = old_root
+        _clear_dmypy_cache()
+
+
 def test_dmypy_args_run_includes_separator():
     """The 'run' command includes a '--' separator after the command."""
     _clear_dmypy_cache()
