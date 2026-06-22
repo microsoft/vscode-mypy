@@ -631,7 +631,7 @@ def _get_dmypy_args(settings: Dict[str, Any], command: str) -> List[str]:
         raise ValueError(f"Invalid dmypy command: {command}")
 
     if key not in DMYPY_ARGS:
-        daemon_status_file = settings.get("daemonStatusFile", "")
+        daemon_status_file = settings.get("daemonStatusFile", None)
         if daemon_status_file:
             STATUS_FILE_NAME = daemon_status_file
         else:
