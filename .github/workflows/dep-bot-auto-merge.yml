@@ -7,8 +7,8 @@ permissions:
 
 jobs:
   dependabot:
+    if: github.repository_owner == 'microsoft' && github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
     steps:
       - name: Dependabot metadata
         id: metadata

@@ -2,7 +2,7 @@
     "name": "mypy-type-checker",
     "displayName": "Mypy Type Checker",
     "description": "%extension.description%",
-    "version": "2026.6.0",
+    "version": "2026.7.0-dev",
     "preview": true,
     "serverInfo": {
         "name": "Mypy",
@@ -225,7 +225,7 @@
         ]
     },
     "dependencies": {
-        "@vscode/common-python-lsp": "0.5.1",
+        "@vscode/common-python-lsp": "^0.6.0",
         "@vscode/python-extension": "^1.0.6",
         "dotenv": "^17.4.1",
         "fs-extra": "^11.3.1",
