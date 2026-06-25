@@ -244,7 +244,7 @@
         "@vscode/python-environments": "https://pkgs.dev.azure.com/azure-public/vside/_packaging/msft_consumption/npm/registry/@vscode/python-environments/-/python-environments-1.0.0.tgz",
         "@vscode/test-electron": "^2.3.8",
         "@vscode/vsce": "^3.7.1-1",
-        "chai": "^4.3.10",
+        "chai": "^6.2.2",
         "eslint": "^8.57.0",
         "glob": "^11.0.0",
         "mocha": "^11.7.2",
