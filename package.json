@@ -51,7 +51,7 @@
     "main": "./dist/extension.js",
     "l10n": "./l10n",
     "scripts": {
-        "postinstall": "npm --prefix external/vscode-common-python-lsp/typescript run build",
+        "postinstall": "node ./build/postinstall.js",
         "vscode:prepublish": "npm run package",
         "compile": "webpack",
         "watch": "webpack --watch",
