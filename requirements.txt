@@ -20,7 +20,9 @@ exceptiongroup==1.2.2 \
 lsprotocol==2025.0.0 \
     --hash=sha256:e879da2b9301e82cfc3e60d805630487ac2f7ab17492f4f5ba5aaba94fe56c29 \
     --hash=sha256:f9d78f25221f2a60eaa4a96d3b4ffae011b107537facee61d3da3313880995c7
-    # via pygls
+    # via
+    #   pygls
+    #   vscode-common-python-lsp
 mypy==1.15.0 \
     --hash=sha256:1124a18bc11a6a62887e3e137f37f53fbae476dc36c185d549d4f837a2a6a14e \
     --hash=sha256:171a9ca9a40cd1843abeca0e405bc1940cd9b305eaeea2dda769ba096932bb22 \
@@ -62,7 +64,9 @@ mypy-extensions==1.0.0 \
 packaging==24.2 \
     --hash=sha256:09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759 \
     --hash=sha256:c228a6dc5e932d346bc5739379109d49e8853dd8223571c7c5b55260edc0b97f
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   vscode-common-python-lsp
 pygls==2.0.1 \
     --hash=sha256:2f774a669fbe2ece977d302786f01f9b0c5df7d0204ea0fa371ecb08288d6b86 \
     --hash=sha256:d29748042cea5bedc98285eb3e2c0c60bf3fc73786319519001bf72bbe8f36cc
@@ -109,6 +113,7 @@ typing-extensions==4.12.2 \
     # via
     #   cattrs
     #   mypy
-vscode-common-python-lsp==0.5.1 \
-    --hash=sha256:8d787f0200035c4f340bcdf785f2b347c97036d449f42910c35ee3ee68bcb653
+vscode-common-python-lsp==0.8.0 \
+    --hash=sha256:b38277459e190b1c29e524e289ecb44e641632063a6e68db3aa67ce5a799d5fb \
+    --hash=sha256:f5c6e132b9197d999508a8d14d4c41c407cdb187defa547a8dccc30c896cca96
     # via -r requirements.in

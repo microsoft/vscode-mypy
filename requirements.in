@@ -9,4 +9,4 @@
 pygls
 packaging
 mypy
-vscode-common-python-lsp==0.5.1
+vscode-common-python-lsp==0.8.0
