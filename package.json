@@ -66,6 +66,27 @@
         "vsce-package-pre": "vsce package -o mypy.vsix --pre-release"
     },
     "contributes": {
+        "problemMatcher": [
+            {
+                "owner": "mypy",
+                "source": "mypy",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": {
+                    "regexp": "^([^:]+):(\\d+):(?:(\\d+):(?:(\\d+):(\\d+):)?)? (\\w+): (.+?)(?:\\s*\\[([\\w-]+)\\])?\\s*$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "endLine": 4,
+                    "endColumn": 5,
+                    "severity": 6,
+                    "message": 7,
+                    "code": 8
+                }
+            }
+        ],
         "configuration": {
             "properties": {
                 "mypy-type-checker.args": {
