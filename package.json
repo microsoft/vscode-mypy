@@ -70,10 +70,7 @@
             {
                 "owner": "mypy",
                 "source": "mypy",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}"
-                ],
+                "fileLocation": "autoDetect",
                 "pattern": {
                     "regexp": "^([^:]+):(\\d+):(?:(\\d+):(?:(\\d+):(\\d+):)?)? (\\w+): (.+?)(?:\\s*\\[([\\w-]+)\\])?\\s*$",
                     "file": 1,
