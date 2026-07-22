@@ -66,8 +66,9 @@
         "vsce-package-pre": "vsce package -o mypy.vsix --pre-release"
     },
     "contributes": {
-        "problemMatcher": [
+        "problemMatchers": [
             {
+                "name": "mypy",
                 "owner": "mypy",
                 "source": "mypy",
                 "fileLocation": "autoDetect",
