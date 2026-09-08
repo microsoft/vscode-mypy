@@ -127,6 +127,12 @@
                     "scope": "window",
                     "type": "string"
                 },
+                "mypy-type-checker.usePerProjectEnvironments": {
+                    "default": false,
+                    "markdownDescription": "%settings.usePerProjectEnvironments.description%",
+                    "scope": "window",
+                    "type": "boolean"
+                },
                 "mypy-type-checker.interpreter": {
                     "default": [],
                     "markdownDescription": "%settings.interpreter.description%",
