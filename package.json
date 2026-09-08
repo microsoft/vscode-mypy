@@ -2,7 +2,7 @@
     "name": "mypy-type-checker",
     "displayName": "Mypy Type Checker",
     "description": "%extension.description%",
-    "version": "2026.5.0-dev",
+    "version": "2026.7.0-dev",
     "preview": true,
     "serverInfo": {
         "name": "Mypy",
@@ -51,6 +51,7 @@
     "main": "./dist/extension.js",
     "l10n": "./l10n",
     "scripts": {
+        "postinstall": "node ./build/postinstall.js",
         "vscode:prepublish": "npm run package",
         "compile": "webpack",
         "watch": "webpack --watch",
@@ -125,6 +126,12 @@
                     ],
                     "scope": "window",
                     "type": "string"
+                },
+                "mypy-type-checker.usePerProjectEnvironments": {
+                    "default": false,
+                    "markdownDescription": "%settings.usePerProjectEnvironments.description%",
+                    "scope": "window",
+                    "type": "boolean"
                 },
                 "mypy-type-checker.interpreter": {
                     "default": [],
@@ -225,7 +232,7 @@
         ]
     },
     "dependencies": {
-        "@vscode/common-python-lsp": "0.5.1",
+        "@vscode/common-python-lsp": "file:external/vscode-common-python-lsp/typescript",
         "@vscode/python-extension": "^1.0.6",
         "dotenv": "^17.4.1",
         "fs-extra": "^11.3.1",
