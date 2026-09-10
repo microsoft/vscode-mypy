@@ -4,8 +4,7 @@ multi-ecosystem-groups:
   dependencies:
     schedule:
       interval: 'weekly'
-    exclude-patterns:
-      - 'mypy'
+    open-pull-requests-limit: 10
     labels:
       - 'dependencies'
       - 'debt'
@@ -24,11 +23,9 @@ updates:
     multi-ecosystem-group: 'dependencies'
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 10
     ignore:
       - dependency-name: '@types/vscode'
       - dependency-name: '@types/node'
-      - dependency-name: 'vscode-languageclient'
 
   - package-ecosystem: 'pip'
     labels:
@@ -37,12 +34,29 @@ updates:
     directories:
       - '/'
       - '/src/test/python_tests'
+    # Multi-ecosystem groups only support positive patterns. Keep mypy
+    # unmatched so its updates remain standalone.
     patterns:
-      - '*'
+      - 'attrs'
+      - 'cattrs'
+      - 'colorama'
+      - 'exceptiongroup'
+      - 'iniconfig'
+      - 'lsprotocol'
+      - 'mypy-extensions'
+      - 'packaging'
+      - 'pluggy'
+      - 'pygls'
+      - 'pygments'
+      - 'pyhamcrest'
+      - 'pytest'
+      - 'python-jsonrpc-server'
+      - 'tomli'
+      - 'typing-extensions'
+      - 'ujson'
     multi-ecosystem-group: 'dependencies'
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 10
 
   # The shared package submodule is updated daily in a standalone PR.
   - package-ecosystem: 'gitsubmodule'
@@ -66,4 +80,3 @@ updates:
     patterns:
       - '*'
     multi-ecosystem-group: 'dependencies'
-    open-pull-requests-limit: 10
