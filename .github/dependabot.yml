@@ -28,7 +28,6 @@ updates:
     ignore:
       - dependency-name: '@types/vscode'
       - dependency-name: '@types/node'
-      - dependency-name: 'vscode-languageclient'
 
   - package-ecosystem: 'pip'
     labels:
