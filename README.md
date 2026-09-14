@@ -14,6 +14,7 @@ The Mypy extension provides a series of features to help your productivity while
 
 -   **Integrated type checking**: Once this extension is installed in Visual Studio Code, Mypy will be automatically executed when you open a Python file, reporting any errors or warnings in the "Problems" window.
 -   **Customizable Mypy version**: By default, this extension uses the version of Mypy that is shipped with the extension. However, you can configure it to use a different binary installed in your environment through the `mypy-type-checker.importStrategy` setting, or set it to a custom Mypy executable through the `mypy-type-checker.path` settings.
+-   **Per-project environments**: In a monorepo, enable `mypy-type-checker.usePerProjectEnvironments` to use the selected Python environment for each project configured through `python-envs.pythonProjects`.
 -   **Workspace-wide type checking**: By default, this extension will only report errors and warnings for files open in the editor. However, you can configure it to report errors and warnings for the entire workspace through the `mypy-type-checker.reportingScope` setting.
 -   **Mono repo support**: If you are working with a mono repo, you can configure the extension to offer type checking for Python files in subfolders of the workspace root folder by setting the `mypy-type-checker.cwd` setting to `${fileDirname}`. You can also set it to ignore/skip type checking for certain files or folder paths by specifying a glob pattern to the `mypy-type-checker.ignorePatterns` setting.
 -   **Customizable linting rules**: You can customize the severity of specific Mypy error codes through the `mypy-type-checker.severity` setting.
@@ -75,6 +76,11 @@ There are several settings you can configure to customize the behavior of this e
       <td>mypy-type-checker.importStrategy</td>
       <td><code>useBundled</code></td>
       <td>Defines which Mypy binary to be used to type check Python files. When set to <code>useBundled</code>, the extension will use the Mypy binary that is shipped with the extension. When set to fromEnvironment, the extension will attempt to use the Mypy binary and all dependencies that are available in the currently selected environment. Note: If the extension can't find a valid Mypy binary in the selected environment, it will fallback to using the Mypy binary that is shipped with the extension. Note: The <code>mypy-type-checker.path</code> setting takes precedence and overrides the behavior of <code>mypy-type-checker.importStrategy</code>.</td>
+    </tr>
+    <tr>
+      <td>mypy-type-checker.usePerProjectEnvironments</td>
+      <td><code>false</code></td>
+      <td>Uses the selected Python environment for each project configured through <code>python-envs.pythonProjects</code>. Explicit <code>mypy-type-checker.path</code> and <code>mypy-type-checker.interpreter</code> settings take precedence.</td>
     </tr>
     <tr>
       <td>mypy-type-checker.showNotifications</td>

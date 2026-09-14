@@ -13,6 +13,7 @@ export const MYPY_TOOL_CONFIG: ToolConfig = {
     toolDisplayName: 'Mypy',
     toolModule: 'mypy',
     minimumPythonVersion: { major: 3, minor: 10 },
+    supportsPerProjectEnvironments: true,
     configFiles: MYPY_CONFIG_FILES,
     serverScript: path.join(EXTENSION_ROOT_DIR, 'bundled', 'tool', 'lsp_server.py'),
     debugServerScript: path.join(EXTENSION_ROOT_DIR, 'bundled', 'tool', '_debug_server.py'),
