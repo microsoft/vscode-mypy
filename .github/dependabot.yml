@@ -22,7 +22,7 @@ updates:
       - '*'
     multi-ecosystem-group: 'dependencies'
     cooldown:
-      default-days: 7
+      default-days: 8
     ignore:
       - dependency-name: '@types/vscode'
       - dependency-name: '@types/node'
@@ -56,7 +56,7 @@ updates:
       - 'ujson'
     multi-ecosystem-group: 'dependencies'
     cooldown:
-      default-days: 7
+      default-days: 8
 
   # The shared package submodule is updated daily in a standalone PR.
   - package-ecosystem: 'gitsubmodule'
