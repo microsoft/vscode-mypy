@@ -22,6 +22,7 @@ export const MYPY_TOOL_CONFIG: ToolConfig = {
         extraPaths: [],
         reportingScope: 'file',
         preferDaemon: false,
+        daemonStatusFile: '',
         severity: { error: 'Error', note: 'Information' },
     },
     trackedSettings: [
