@@ -23,4 +23,20 @@ export default [
             semi: "warn",
         },
     },
+    {
+        files: ['build/setup*.js', 'build/normalize-package-lock*.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'commonjs',
+            globals: {
+                __dirname: 'readonly',
+                console: 'readonly',
+                process: 'readonly',
+            },
+        },
+        rules: {
+            'no-unused-vars': 'error',
+            'no-undef': 'error',
+        },
+    },
 ];
