@@ -51,6 +51,13 @@
     "main": "./dist/extension.js",
     "l10n": "./l10n",
     "scripts": {
+        "setup": "node ./build/setup.js",
+        "setup:msft": "node ./build/setup-msft.js",
+        "setup:msft-registry": "node ./build/setup-npm-registry.js",
+        "ci:msft": "node ./build/setup-npm-registry.js --ci",
+        "setup-hooks": "node ./build/setup-hooks.js",
+        "normalize-lockfile": "node ./build/normalize-package-lock.js",
+        "test:setup": "node --test ./build/setup.test.js ./build/setup-npm-registry.test.js ./build/normalize-package-lock.test.js",
         "postinstall": "node ./build/postinstall.js",
         "vscode:prepublish": "npm run package",
         "compile": "webpack",
@@ -59,9 +66,9 @@
         "compile-tests": "tsc -p . --outDir out",
         "watch-tests": "tsc -p . -w --outDir out",
         "pretest": "npm run compile-tests && npm run compile",
-        "lint": "eslint src --ext ts",
-        "format-check": "prettier --check 'src/**/*.ts' 'build/**/*.yml' '.github/**/*.yml'",
-        "fix-format": "prettier --write src/**/*.ts build/**/*.yml .github/**/*.yml",
+        "lint": "eslint src --ext ts \"build/setup*.js\" \"build/normalize-package-lock*.js\"",
+        "format-check": "prettier --check \"src/**/*.ts\" \"build/**/*.yml\" \".github/**/*.yml\" \"build/setup*.js\" \"build/normalize-package-lock*.js\" build/package-feeds.json",
+        "fix-format": "prettier --write src/**/*.ts build/**/*.yml .github/**/*.yml \"build/setup*.js\" \"build/normalize-package-lock*.js\" build/package-feeds.json",
         "tests": "node ./out/test/ts_tests/runTest.js",
         "vsce-package": "vsce package -o mypy.vsix",
         "vsce-package-pre": "vsce package -o mypy.vsix --pre-release"
@@ -263,7 +270,7 @@
         "@types/vscode": "^1.74.0",
         "@typescript-eslint/eslint-plugin": "^8.57.0",
         "@typescript-eslint/parser": "^8.57.0",
-        "@vscode/test-electron": "^2.3.8",
+        "@vscode/test-electron": "^3.1.0",
         "@vscode/vsce": "^3.9.2",
         "chai": "^6.2.2",
         "eslint": "^10.0.3",
@@ -275,8 +282,8 @@
         "ts-loader": "^9.6.2",
         "typemoq": "^2.1.0",
         "typescript": "^5.9.2",
-        "webpack": "^5.110.1",
-        "webpack-cli": "^6.0.1"
+        "webpack": "^5.111.1",
+        "webpack-cli": "^7.2.3"
     },
     "overrides": {
         "serialize-javascript": "^7.0.3"
