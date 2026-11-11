@@ -13,3 +13,4 @@
 pygls
 packaging
 mypy
+typing-extensions>=4.14.1
