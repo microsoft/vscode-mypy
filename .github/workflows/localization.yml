@@ -17,6 +17,9 @@ on:
 permissions:
   contents: read
 
+env:
+  NPM_CONFIG_REGISTRY: https://devdiv.pkgs.visualstudio.com/DevDiv/_packaging/Pylance_PublicPackages/npm/registry/
+
 concurrency:
   group: localization-${{ github.ref }}
   cancel-in-progress: false
@@ -26,7 +29,23 @@ jobs:
     if: github.repository == 'microsoft/vscode-mypy'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     steps:
+      - name: Checkout feed authentication action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: ci-actions
+          sparse-checkout: |
+            /.github/actions/authenticate-feeds/
+            /build/setup-github-feeds.js
+            /build/package-feeds.json
+          sparse-checkout-cone-mode: false
+
+      - name: Authenticate package feeds
+        uses: ./ci-actions/.github/actions/authenticate-feeds
+
       - uses: microsoft/vscode-python-ci/actions/localization@f078b68e968b56e0a22d6cf803bb241a6b094994
         with:
           app-id: ${{ vars.PYTHON_LOCALIZATION_APP_ID }}
@@ -34,3 +53,4 @@ jobs:
           submodules: recursive
           source-paths: '["src", "external/vscode-common-python-lsp/typescript/src"]'
           node-version: '24.17.0'
+          npm-registry: ${{ env.NPM_CONFIG_REGISTRY }}
