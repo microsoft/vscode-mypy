@@ -26,6 +26,8 @@ jobs:
     if: github.repository == 'microsoft/vscode-mypy'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - uses: microsoft/vscode-python-ci/actions/localization@f078b68e968b56e0a22d6cf803bb241a6b094994
         with:
@@ -34,3 +36,4 @@ jobs:
           submodules: recursive
           source-paths: '["src", "external/vscode-common-python-lsp/typescript/src"]'
           node-version: '24.17.0'
+          npm-registry: https://registry.npmjs.org/
