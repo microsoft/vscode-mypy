@@ -57,13 +57,20 @@
         "ci:msft": "node ./build/setup-npm-registry.js --ci",
         "setup-hooks": "node ./build/setup-hooks.js",
         "normalize-lockfile": "node ./build/normalize-package-lock.js",
-        "test:setup": "node --test ./build/setup.test.js ./build/setup-npm-registry.test.js ./build/normalize-package-lock.test.js",
+        "test:setup": "node --test ./build/setup.test.js ./build/setup-shared.test.js ./build/setup-npm-registry.test.js ./build/normalize-package-lock.test.js",
+        "test:runtime": "node --test ./build/setup-runtime.test.js",
         "postinstall": "node ./build/postinstall.js",
         "vscode:prepublish": "npm run package",
+        "build:shared": "npm --prefix ./external/vscode-common-python-lsp/typescript run build",
+        "precompile": "npm run build:shared",
         "compile": "webpack",
+        "prewatch": "npm run build:shared",
         "watch": "webpack --watch",
+        "prepackage": "npm run build:shared",
         "package": "webpack --mode production --devtool source-map --config ./webpack.config.js",
+        "precompile-tests": "npm run build:shared",
         "compile-tests": "tsc -p . --outDir out",
+        "prewatch-tests": "npm run build:shared",
         "watch-tests": "tsc -p . -w --outDir out",
         "pretest": "npm run compile-tests && npm run compile",
         "lint": "eslint src --ext ts \"build/setup*.js\" \"build/normalize-package-lock*.js\"",
@@ -256,9 +263,6 @@
                 "command": "mypy-type-checker.restart"
             }
         ]
-    },
-    "dependencies": {
-        "@vscode/common-python-lsp": "file:external/vscode-common-python-lsp/typescript"
     },
     "devDependencies": {
         "@types/chai": "^4.3.11",

@@ -6,7 +6,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import { Uri, workspace, WorkspaceFolder } from 'vscode';
-import { getWorkspaceSettings } from '@vscode/common-python-lsp';
+import { getWorkspaceSettings } from '../../../../../external/vscode-common-python-lsp/typescript/dist';
 import { EXTENSION_ROOT_DIR, MYPY_TOOL_CONFIG } from '../../../../common/constants';
 
 suite('Mypy tool configuration', () => {
