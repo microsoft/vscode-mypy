@@ -148,7 +148,7 @@ def tests(session: nox.Session) -> None:
     session.install("-r", "src/test/python_tests/requirements.txt")
     session.run("pytest", "--capture=no", "src/test/python_tests")
 
-    session.install("freezegun")
+    session.install("freezegun", "nox")
     session.run("pytest", "build")
 
 
