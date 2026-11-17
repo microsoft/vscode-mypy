@@ -3,43 +3,26 @@
 
 import * as vscode from 'vscode';
 import {
-    createToolContext,
-    deactivateServer,
+    activateToolExtension,
     loadServerDefaults,
-    PythonEnvironmentsProvider,
-    registerCommonSubscriptions,
-    registerLogger,
-    ToolExtensionContext,
-} from '@vscode/common-python-lsp';
+    ToolExtensionRuntime,
+} from '../external/vscode-common-python-lsp/typescript/dist';
 import { EXTENSION_ROOT_DIR, MYPY_TOOL_CONFIG } from './common/constants';
 import { logLegacySettings } from './common/settings';
 
-let toolContext: ToolExtensionContext | undefined;
+let runtime: ToolExtensionRuntime | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     const serverInfo = loadServerDefaults(EXTENSION_ROOT_DIR);
-    const outputChannel = vscode.window.createOutputChannel(serverInfo.name, { log: true });
-    context.subscriptions.push(outputChannel, registerLogger(outputChannel));
-
-    const pythonProvider = new PythonEnvironmentsProvider(MYPY_TOOL_CONFIG);
-    context.subscriptions.push(pythonProvider);
-
-    toolContext = createToolContext({ serverInfo, outputChannel, toolConfig: MYPY_TOOL_CONFIG, pythonProvider });
-    context.subscriptions.push({ dispose: () => toolContext?.dispose() });
-
-    registerCommonSubscriptions(context, {
+    runtime = activateToolExtension(context, {
         serverInfo,
-        outputChannel,
         toolConfig: MYPY_TOOL_CONFIG,
-        toolContext,
-        pythonProvider,
     });
 
     logLegacySettings();
-
-    setImmediate(() => toolContext!.initialize(context.subscriptions));
 }
 
 export async function deactivate(): Promise<void> {
-    await deactivateServer(toolContext);
+    await runtime?.deactivate();
+    runtime = undefined;
 }

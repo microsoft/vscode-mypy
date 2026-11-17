@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 // Extension-specific settings: ISettings type extension and legacy settings logging.
-// All shared settings resolution is handled by @vscode/common-python-lsp directly.
+// All shared settings resolution is handled by the pinned shared checkout.
 
 import {
     IBaseSettings,
@@ -10,7 +10,7 @@ import {
     getWorkspaceFolders,
     logLegacySettings as _logLegacySettings,
     traceWarn,
-} from '@vscode/common-python-lsp';
+} from '../../external/vscode-common-python-lsp/typescript/dist';
 
 export interface ISettings extends IBaseSettings {
     ignorePatterns: string[];
