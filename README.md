@@ -95,7 +95,7 @@ There are several settings you can configure to customize the behavior of this e
     </tr>
     <tr>
       <td>mypy-type-checker.preferDaemon</td>
-      <td><code>true</code></td>
+      <td><code>false</code></td>
       <td>(experimental) Whether the Mypy daemon (<code>dmypy</code>) will take precedence over <code>mypy</code> for type checking. Note: if <code>mypy-type-checker.reportingScope</code> is set to <code>workspace</code>, enabling the Mypy daemon will offer a faster type checking experience. This setting will be overridden if <code>mypy-type-checker.path</code> is set.
     </tr>
     <tr>
@@ -104,13 +104,18 @@ There are several settings you can configure to customize the behavior of this e
       <td>(experimental) Path to the status file used by the Mypy daemon (<code>dmypy</code>).
     </tr>
     <tr>
+      <td>mypy-type-checker.extraPaths</td>
+      <td><code>[]</code></td>
+      <td>Additional directories that Mypy searches for imports. They are passed to Mypy through the <code>MYPYPATH</code> environment variable. Use this when your source code is not at the workspace root. If this setting is empty, the extension uses <code>python.analysis.extraPaths</code> instead.</td>
+    </tr>
+    <tr>
       <td>mypy-type-checker.ignorePatterns</td>
       <td><code>[]</code></td>
       <td>Configure <a href="https://docs.python.org/3/library/fnmatch.html">glob patterns</a> as supported by the fnmatch Python library to exclude files or folders from being type checked by Mypy.</td>
     </tr>
 </table>
 
-The following variables are supported for substitution in the `mypy-type-checker.args`, `mypy-type-checker.cwd`, `mypy-type-checker.path`, `mypy-type-checker.interpreter` and `mypy-type-checker.ignorePatterns` settings:
+The following variables are supported for substitution in the `mypy-type-checker.args`, `mypy-type-checker.cwd`, `mypy-type-checker.path`, `mypy-type-checker.interpreter`, `mypy-type-checker.extraPaths` and `mypy-type-checker.ignorePatterns` settings:
 
 -   `${workspaceFolder}`
 -   `${workspaceFolder:FolderName}`
